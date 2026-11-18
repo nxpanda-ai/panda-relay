@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- plan-oss-relay D5b: tests of Panda.Protocol alone (exported with the relay): AuthCrypto against
+       schema/auth-vectors.json, the connection code. Never references the bridge or the relay. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- Test names use Method_condition_result underscores by convention -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+    <!-- as in Panda.Bridge.Tests (plan-aot A5b), where these tests ran before: reflection JSON off -->
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="4.0.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Panda.Protocol\Panda.Protocol.csproj" />
+    <Compile Include="..\Shared\RepoPaths.cs" Link="Shared\RepoPaths.cs" />
+  </ItemGroup>
+</Project>

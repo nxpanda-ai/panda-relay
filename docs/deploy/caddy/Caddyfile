@@ -1,0 +1,49 @@
+# Panda relay behind Caddy (profile b). Caddy gets and renews the certificates itself.
+# No `log` directive in the site: Caddy writes no access log unless a site asks for one (D1: never log the dial token,
+# Authorization or query strings). Error entries (e.g. a 502 from reverse_proxy) still name the request URI, and the
+# copied MCP URL carries `?token=` (plan-public-query-token D4), so the default logger deletes the secret query keys.
+# This global block must be the FIRST block of the Caddyfile: with an existing global block, merge `log default` into
+# it. Syntax per caddyserver.com/docs/caddyfile/options "log" + /directives/log "filter"; UNVERIFIED until
+# `caddy validate` on the VPS (U1).
+
+{
+	log default {
+		format filter {
+			fields {
+				request>uri query {
+					delete token
+					delete dial
+					delete accept
+					delete id
+				}
+			}
+		}
+	}
+}
+
+# ONE host for both: the relay only accepts a hosted MCP URL on its own host (`RelayOptions.cs` HostedMcpUrl, spec
+# §78.12 "https://<relay>/mcp"), so /mcp goes to the hosted bridge on the relay's name.
+
+relay.example.com {
+	@relay path /v1/browser /v1/stream
+	handle @relay {
+		# WebSocket upgrades pass through; X-Forwarded-For carries the client IP (the relay trusts 127.0.0.1 only)
+		reverse_proxy 127.0.0.1:8080
+	}
+	# 7b ("Chỉ URL") only: the hosted bridge's public MCP endpoint
+	handle /mcp {
+		# Host is passed through unchanged (the hosted bridge checks it exactly); SSE is flushed at once
+		reverse_proxy 127.0.0.1:8090 {
+			flush_interval -1
+		}
+	}
+	# plan-https-code: the help page for the connection code's link form (https://<host>/c/<relayId>#…)
+	# no {n} quantifier: braces are Caddy placeholders; the relay checks the id itself (404 for a bad one)
+	@help path_regexp ^/c/[A-Za-z0-9_-]+$
+	handle @help {
+		reverse_proxy 127.0.0.1:8080
+	}
+	handle {
+		respond 404
+	}
+}

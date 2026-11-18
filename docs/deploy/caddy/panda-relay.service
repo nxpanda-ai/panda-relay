@@ -1,0 +1,22 @@
+# /etc/systemd/system/panda-relay.service — profile (b). 7a only: drop the three --hosted-* flags and the
+# panda-hosted lines in [Unit].
+[Unit]
+Description=Panda relay
+After=network-online.target panda-hosted.service
+Wants=network-online.target panda-hosted.service
+
+[Service]
+User=panda
+ExecStart=/opt/panda/relay/panda-relay --public-host relay.example.com --port 8080 --internal-port 8081 \
+  --trusted-proxy 127.0.0.1 \
+  --hosted-admin-url http://127.0.0.1:47822 --hosted-admin-token-file /var/lib/panda/hosted-admin.token \
+  --hosted-mcp-url https://relay.example.com/mcp
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

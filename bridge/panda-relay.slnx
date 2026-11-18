@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Panda.Protocol/Panda.Protocol.csproj" />
+    <Project Path="src/Panda.Relay/Panda.Relay.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Panda.Protocol.Tests/Panda.Protocol.Tests.csproj" />
+    <Project Path="tests/Panda.Relay.Tests/Panda.Relay.Tests.csproj" />
+  </Folder>
+</Solution>

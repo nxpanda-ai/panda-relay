@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- Test names use Method_condition_result underscores by convention -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.10.0" />
+    <PackageReference Include="xunit.v3" Version="4.0.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Panda.Relay\Panda.Relay.csproj" />
+    <!-- plan-goal-1-5 A3: one port picker for every test project -->
+    <Compile Include="..\Shared\TestPorts.cs" Link="Shared\TestPorts.cs" />
+    <Compile Include="..\Shared\RepoPaths.cs" Link="Shared\RepoPaths.cs" />
+  </ItemGroup>
+</Project>

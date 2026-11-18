@@ -1,0 +1,4 @@
+# shell scripts run on Linux: LF whatever core.autocrlf says
+*.sh text eol=lf
+# Linux deployment files (systemd unit, Caddyfile): LF whatever core.autocrlf says
+docs/deploy/** text eol=lf

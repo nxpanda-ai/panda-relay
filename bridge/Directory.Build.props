@@ -1,0 +1,21 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+  </PropertyGroup>
+  <!-- plan-update-check D1: the release version = the extension manifest's (PandaSetup is named from it too);
+       Directory.Build.targets fails the build when it cannot be read (never a silent 1.0.0). plan-oss-relay D3: the
+       exported relay repo has no extension/ — there the version comes from bridge/VERSION (written by
+       oss/relay/export.ps1); in this repo the manifest exists and always wins. -->
+  <PropertyGroup>
+    <PandaManifestPath>$(MSBuildThisFileDirectory)../extension/static/manifest.json</PandaManifestPath>
+    <PandaManifestPath Condition="!Exists('$(PandaManifestPath)')">$(MSBuildThisFileDirectory)VERSION</PandaManifestPath>
+    <PandaVersion Condition="Exists('$(PandaManifestPath)') And $(PandaManifestPath.EndsWith('.json'))">$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(PandaManifestPath)')), '"version"\s*:\s*"(\d+\.\d+\.\d+)"').Groups[1].Value)</PandaVersion>
+    <PandaVersion Condition="Exists('$(PandaManifestPath)') And !$(PandaManifestPath.EndsWith('.json'))">$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(PandaManifestPath)')), '^(\d+\.\d+\.\d+)\s*$').Groups[1].Value)</PandaVersion>
+    <Version Condition="'$(PandaVersion)' != ''">$(PandaVersion)</Version>
+  </PropertyGroup>
+</Project>

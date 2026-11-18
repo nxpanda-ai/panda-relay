@@ -1,0 +1,6 @@
+<Project>
+  <!-- plan-update-check D1: a build whose release version could not be read from the manifest stops here. -->
+  <Target Name="PandaCheckVersion" BeforeTargets="BeforeBuild">
+    <Error Condition="'$(PandaVersion)' == ''" Text="plan-update-check: no x.y.z version in $(PandaManifestPath) (the extension manifest's &quot;version&quot;, or one x.y.z line in bridge/VERSION; plan-oss-relay D3)" />
+  </Target>
+</Project>

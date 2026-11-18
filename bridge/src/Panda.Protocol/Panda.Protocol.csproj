@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- plan-protocol-project: the code the relay (panda-relay) and the bridge (panda-browser) share — the generated
+       protocol (schema/codegen.mjs writes Protocol/Protocol.g.cs here), AuthCrypto, DialTokens, ConnectionCode,
+       RelayAddress, LogPin. The relay references this project only, never Panda.Bridge (decisions.md). Namespaces stay
+       Panda.Bridge.* (no consumer changed); internal types stay internal, reached through InternalsVisibleTo. -->
+  <PropertyGroup>
+    <AssemblyName>Panda.Protocol</AssemblyName>
+    <RootNamespace>Panda.Bridge</RootNamespace>
+    <!-- both consumers publish trimmed / Native AOT: any hazard in shared code is a build error here too -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- LogPin's LoggerFilterOptions; both consumers already run on this shared framework (no file shipped) -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="panda-browser" />
+    <InternalsVisibleTo Include="panda-relay" />
+    <InternalsVisibleTo Include="Panda.Bridge.Tests" />
+    <InternalsVisibleTo Include="Panda.Relay.Tests" />
+    <InternalsVisibleTo Include="Panda.Relay.Bridge.Tests" />
+    <InternalsVisibleTo Include="Panda.Protocol.Tests" />
+  </ItemGroup>
+</Project>
