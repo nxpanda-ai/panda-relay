@@ -43,6 +43,19 @@ Run from `bridge/` (.NET 10 SDK per `global.json`; tests run on Microsoft.Testin
   vectors to make a test pass.
 - Comments that cite `spec §N`, `decisions.md` or plan names refer to the upstream repository.
 
+## Forwarding path: zero allocation per message
+
+`RelayHub.PumpAsync` and `RelaySocket` allocate nothing in Panda code per forwarded message (the .NET WebSocket
+and Kestrel below them still do).
+
+- `Frame.Bytes` is lent by its `RelaySocket`: valid only until the next receive, drain or dispose on that socket.
+  Never keep it longer. A frame over 16 KiB is rented from `ArrayPool` and returned cleared.
+- No per-send `CancellationTokenSource` or cancelable token: one timer per socket aborts a stuck send.
+- In `PumpAsync`, never call `ReceiveAsync`, `SendAsync` or another `async` helper per message. Its inlined steps
+  mirror those two methods: change both copies together.
+- `AllocationTests` guards this (a loose gate in Debug). Before a change to this path, run the strict gate:
+  `dotnet test --project tests/Panda.Relay.Tests -c Release -- --filter-class "*AllocationTests"`
+
 ## Pull requests
 
 - Accepted changes are made upstream and come back with the next export. Keep a change small and focused: no
