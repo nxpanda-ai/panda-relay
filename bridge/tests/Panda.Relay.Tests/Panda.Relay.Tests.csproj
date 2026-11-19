@@ -11,11 +11,13 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Panda.TestSupport" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Panda.Relay\Panda.Relay.csproj" />
     <!-- plan-goal-1-5 A3: one port picker for every test project -->
     <Compile Include="..\Shared\TestPorts.cs" Link="Shared\TestPorts.cs" />
     <Compile Include="..\Shared\RepoPaths.cs" Link="Shared\RepoPaths.cs" />
+    <Compile Include="..\Shared\RelayClient.cs" Link="Shared\RelayClient.cs" />
   </ItemGroup>
 </Project>

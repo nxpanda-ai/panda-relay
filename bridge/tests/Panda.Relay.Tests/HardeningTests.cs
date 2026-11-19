@@ -21,7 +21,7 @@ public class HardeningTests
     [InlineData("/v1/stream?accept=AAAAAAAAAAAAAAAAAAAAAA", null)]
     [InlineData("/v1/stream?accept=AAAAAAAAAAAAAAAAAAAAAA", "https://evil.example")]
     [InlineData("/v1/stream?dial=AAAAAAAAAAAAAAAAAAAAAA&kind=link", "https://evil.example")]
-    [InlineData("/v1/stream?dial=AAAAAAAAAAAAAAAAAAAAAA&kind=link", RelayFixture.ExtOrigin)]
+    [InlineData("/v1/stream?dial=AAAAAAAAAAAAAAAAAAAAAA&kind=link", RelayClient.ExtOrigin)]
     public async Task An_upgrade_with_the_wrong_Origin_for_its_path_is_403(string path, string? origin)
     {
         await using var relay = await RelayFixture.StartAsync();
@@ -36,7 +36,7 @@ public class HardeningTests
             o.RegistrationsPerIpPerHour = 1;
             o.RefusedDialsPerIpPerHour = 1;
         });
-        var id = StreamTests.Identity();
+        var id = RelayClient.Identity();
         using var key = id.Key;
         for (var i = 0; i < 3; i++)
         {
@@ -73,7 +73,7 @@ public class HardeningTests
     public async Task The_stream_quota_is_spent_at_STREAM_OPEN_so_two_waiting_streams_cannot_both_pass_it()
     {
         await using var relay = await RelayFixture.StartAsync(o => o.StreamsPerDay = 1);
-        await using var chrome = await StreamTests.OnlineAsync(relay);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
         using var link = await relay.DialAsync(chrome.Chrome.RelayId, "link", chrome.Link.Token);
         var linkIncoming = await chrome.Chrome.IncomingAsync();
         using var pair = await relay.DialAsync(chrome.Chrome.RelayId, "pair", chrome.Pair.Token);
@@ -90,8 +90,8 @@ public class HardeningTests
     public async Task Crossing_the_byte_quota_also_closes_a_waiting_stream_of_that_Chrome_4529()
     {
         await using var relay = await RelayFixture.StartAsync(o => o.BytesPerDay = 1000);
-        await using var chrome = await StreamTests.OnlineAsync(relay);
-        var (dial, ext) = await StreamTests.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
+        var (dial, ext) = await RelayClient.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
         using var d = dial;
         using var e = ext;
         using var waiting = await relay.DialAsync(chrome.Chrome.RelayId, "pair", chrome.Pair.Token);

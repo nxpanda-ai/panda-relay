@@ -14,7 +14,7 @@ public class NotOnlineLogTests
 {
     private static readonly DateTimeOffset At = new(2026, 10, 12, 12, 10, 0, TimeSpan.Zero);
 
-    private static string OfflineId() => StreamTests.Identity().RelayId;
+    private static string OfflineId() => RelayClient.Identity().RelayId;
 
     private static async Task<int> DialCodeAsync(RelayFixture relay, string relayId, string kind = "link", string? token = null)
     {
@@ -88,7 +88,7 @@ public class NotOnlineLogTests
     public async Task Another_refusal_is_still_logged_every_time()
     {
         await using var relay = await RelayFixture.StartAsync(now: At);
-        await using var chrome = await StreamTests.OnlineAsync(relay);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
         for (var i = 0; i < 3; i++)
         {
             Assert.Equal(RelayCloseCodes.DialRefused, await DialCodeAsync(relay, chrome.Chrome.RelayId, "link", "wrong"));

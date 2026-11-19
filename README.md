@@ -36,12 +36,14 @@ bridge/                      the .NET solution (the folder name comes from the P
                              connection codes, the relay address rules, a log-level floor
   tests/Panda.Relay.Tests/   relay tests (xUnit v3, Microsoft.Testing.Platform)
   tests/Panda.Protocol.Tests/  AuthCrypto against schema/auth-vectors.json, connection codes
-  tests/Shared/              test helpers (free ports, repository root)
+  tests/Panda.Relay.Conformance/  black-box conformance suite + load report for any relay executable (its own step)
+  tests/Shared/              test helpers (free ports, repository root, the relay client)
   VERSION                    the Panda release this copy comes from
 schema/
   protocol.v1.json           the protocol: one source of truth for C# and TypeScript
   codegen.mjs                generates bridge/src/Panda.Protocol/Protocol/Protocol.g.cs (and the extension's TS)
   auth-vectors.json / .py    test vectors from an independent Python implementation
+  relay-vectors.json / .py   relayId and dial-token vectors, also independent (the conformance suite checks them)
 docs/deploy/caddy/           a systemd unit and a Caddyfile for the relay behind Caddy
 ```
 
@@ -60,6 +62,21 @@ node schema/codegen.mjs --check --only=cs
 `Protocol.g.cs` is generated. After you change `schema/protocol.v1.json`, run `node schema/codegen.mjs --only=cs`.
 Never edit the generated file by hand. Warnings are errors, and `Panda.Protocol` builds with the trimming and Native
 AOT analyzers on (the Panda app ships it in a Native AOT executable).
+
+## Conformance suite
+
+`bridge/tests/Panda.Relay.Conformance` tests a relay **executable** from outside, over HTTP and WebSocket only. A
+relay written in another language runs the same tests. It starts dozens of relay processes, so it is not in
+`panda-relay.slnx`: run it as its own step, not beside another test run.
+
+```
+cd bridge
+dotnet test --project tests/Panda.Relay.Conformance
+```
+
+By default it tests the relay built from this repository. `PANDA_RELAY_CMD=<native executable>` tests another one.
+The same project holds a load report (explicit tests, never part of a normal run). Its README has the variables, the
+coverage, the load scenarios and the obligations a black-box run cannot check.
 
 ## Run
 

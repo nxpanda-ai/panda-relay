@@ -59,7 +59,7 @@ public class InternalListenerTests
     public async Task Internal_dials_are_not_limited_per_IP_while_the_public_bucket_of_the_same_IP_is()
     {
         await using var relay = await WithInternalAsync(o => o.RefusedDialsPerIpPerHour = 1);
-        await using var chrome = await StreamTests.OnlineAsync(relay);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
         using (var refused = await relay.DialAsync(chrome.Chrome.RelayId, "link", "wrong"))
         {
             Assert.Equal(RelayCloseCodes.DialRefused, (await Wire.ClosedAsync(refused)).Code);
@@ -86,7 +86,7 @@ public class InternalListenerTests
     public async Task Per_relayId_admission_still_applies_on_the_internal_listener()
     {
         await using var relay = await WithInternalAsync();
-        var (key, relayId, link, _) = StreamTests.Identity();
+        var (key, relayId, link, _) = RelayClient.Identity();
         using var _k = key;
         using var offline = await DialInternalAsync(relay, relayId, "link", link.Token);
         Assert.Equal(RelayCloseCodes.NotOnline, (await Wire.ClosedAsync(offline)).Code);
@@ -102,7 +102,7 @@ public class InternalListenerTests
     {
         await using var relay = await WithInternalAsync();
         using var ws = new ClientWebSocket();
-        ws.Options.SetRequestHeader("Origin", RelayFixture.ExtOrigin);
+        ws.Options.SetRequestHeader("Origin", RelayClient.ExtOrigin);
         ws.Options.CollectHttpResponseDetails = true;
         await Assert.ThrowsAsync<WebSocketException>(() => ws.ConnectAsync(Internal(relay, pathAndQuery), TestContext.Current.CancellationToken));
         Assert.Equal(HttpStatusCode.NotFound, ws.HttpStatusCode);
@@ -116,7 +116,7 @@ public class InternalListenerTests
             o.TrustedProxies.Add(IPNetwork.Parse("127.0.0.1/32"));
             o.ControlIdleTimeout = TimeSpan.FromHours(1); // the Chrome stays online across the 2-minute advances below
         });
-        await using var chrome = await StreamTests.OnlineAsync(relay);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
         var before = relay.Logs.Lines.Count(l => l.Contains("trusted proxy sent no client IP", StringComparison.Ordinal));
         for (var i = 0; i < 2; i++)
         {

@@ -3,14 +3,13 @@ using System.Security.Cryptography;
 using System.Text;
 using Panda.Bridge.Protocol;
 using Panda.Bridge.Relay;
+using static Panda.TestSupport.RelayClient;
 
 namespace Panda.Relay.Tests;
 
 /// <summary>plan-relay P4, seam S1: dial / accept / STREAM_OPEN, piping, slots and the close rules of /v1/stream.</summary>
 public class StreamTests
 {
-    private const string Code = "ABCD-EFGH-IJKL-MNOP-QRST-UVWXYZ"; // any valid pair code shape works for a token
-
     [Fact]
     public async Task A_dial_for_an_offline_relayId_is_closed_4504_whatever_the_token()
     {
@@ -29,7 +28,7 @@ public class StreamTests
     public async Task A_dial_without_the_registered_token_is_closed_4501(string? token)
     {
         await using var relay = await RelayFixture.StartAsync();
-        await using var chrome = await OnlineAsync(relay);
+        await using var chrome = await relay.OnlineAsync();
         using var dial = await relay.DialAsync(chrome.Chrome.RelayId, "link", token);
         Assert.Equal(RelayCloseCodes.DialRefused, (await Wire.ClosedAsync(dial)).Code);
     }
@@ -38,7 +37,7 @@ public class StreamTests
     public async Task The_pair_token_does_not_open_a_link_stream()
     {
         await using var relay = await RelayFixture.StartAsync();
-        await using var chrome = await OnlineAsync(relay);
+        await using var chrome = await relay.OnlineAsync();
         using var dial = await relay.DialAsync(chrome.Chrome.RelayId, "link", chrome.Pair.Token);
         Assert.Equal(RelayCloseCodes.DialRefused, (await Wire.ClosedAsync(dial)).Code);
     }
@@ -49,9 +48,9 @@ public class StreamTests
     public async Task An_accepted_stream_gets_STREAM_OPEN_and_pipes_binary_frames_unchanged_both_ways(string kind)
     {
         await using var relay = await RelayFixture.StartAsync();
-        await using var chrome = await OnlineAsync(relay);
+        await using var chrome = await relay.OnlineAsync();
         var token = kind == "link" ? chrome.Link.Token : chrome.Pair.Token;
-        var (dial, ext) = await OpenStreamAsync(relay, chrome, kind, token);
+        var (dial, ext) = await relay.OpenStreamAsync(chrome, kind, token);
         using var d = dial;
         using var e = ext;
 
@@ -71,7 +70,7 @@ public class StreamTests
     public async Task DIAL_TOKENS_replaces_the_registered_hashes()
     {
         await using var relay = await RelayFixture.StartAsync();
-        await using var chrome = await OnlineAsync(relay);
+        await using var chrome = await relay.OnlineAsync();
         var newPair = DialTokens.PairToken("ZZZZ-YYYY-XXXX-WWWW-VVVV-TTTTSS", chrome.Chrome.RelayId);
         Assert.True(DialTokens.TryHash(newPair, out var newPairHash));
         await Wire.SendAsync(chrome.Chrome.Control, new RelayDialTokens(1, Pair: newPairHash)); // no link any more
@@ -92,7 +91,7 @@ public class StreamTests
     public async Task A_frame_from_the_dialer_before_STREAM_OPEN_is_closed_and_frees_the_slot(string frame, int code)
     {
         await using var relay = await RelayFixture.StartAsync(o => o.MaxFrameBytes = 1024);
-        await using var chrome = await OnlineAsync(relay);
+        await using var chrome = await relay.OnlineAsync();
         using var dial = await relay.DialAsync(chrome.Chrome.RelayId, "link", chrome.Link.Token);
         var incoming = await chrome.Chrome.IncomingAsync();
         await (frame switch
@@ -105,7 +104,7 @@ public class StreamTests
 
         using var late = await chrome.Chrome.AcceptAsync(incoming.StreamId);
         Assert.Equal(RelayCloseCodes.NotOnline, (await Wire.ClosedAsync(late)).Code);
-        var (again, ext) = await OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        var (again, ext) = await relay.OpenStreamAsync(chrome, "link", chrome.Link.Token);
         again.Dispose();
         ext.Dispose();
     }
@@ -114,7 +113,7 @@ public class StreamTests
     public async Task No_accept_within_the_accept_timeout_closes_the_dialer_4508_and_the_streamId_expires()
     {
         await using var relay = await RelayFixture.StartAsync();
-        await using var chrome = await OnlineAsync(relay);
+        await using var chrome = await relay.OnlineAsync();
         using var dial = await relay.DialAsync(chrome.Chrome.RelayId, "link", chrome.Link.Token);
         var incoming = await chrome.Chrome.IncomingAsync();
         relay.Time.Advance(TimeSpan.FromSeconds(15));
@@ -127,7 +126,7 @@ public class StreamTests
     public async Task An_unknown_or_already_used_streamId_is_closed_4504()
     {
         await using var relay = await RelayFixture.StartAsync();
-        await using var chrome = await OnlineAsync(relay);
+        await using var chrome = await relay.OnlineAsync();
         using var unknown = await chrome.Chrome.AcceptAsync("AAAAAAAAAAAAAAAAAAAAAA");
         Assert.Equal(RelayCloseCodes.NotOnline, (await Wire.ClosedAsync(unknown)).Code);
 
@@ -143,7 +142,7 @@ public class StreamTests
     public async Task A_second_stream_of_the_same_kind_is_closed_4509_while_the_first_holds_the_slot()
     {
         await using var relay = await RelayFixture.StartAsync();
-        await using var chrome = await OnlineAsync(relay);
+        await using var chrome = await relay.OnlineAsync();
         using var pending = await relay.DialAsync(chrome.Chrome.RelayId, "link", chrome.Link.Token);
         await chrome.Chrome.IncomingAsync();
         using var second = await relay.DialAsync(chrome.Chrome.RelayId, "link", chrome.Link.Token);
@@ -162,8 +161,8 @@ public class StreamTests
     public async Task A_text_frame_after_STREAM_OPEN_closes_the_sender_4500_and_the_peer_1000()
     {
         await using var relay = await RelayFixture.StartAsync();
-        await using var chrome = await OnlineAsync(relay);
-        var (dial, ext) = await OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        await using var chrome = await relay.OnlineAsync();
+        var (dial, ext) = await relay.OpenStreamAsync(chrome, "link", chrome.Link.Token);
         using var d = dial;
         using var e = ext;
         await Wire.SendTextAsync(ext, "{}");
@@ -175,8 +174,8 @@ public class StreamTests
     public async Task A_frame_over_the_cap_closes_the_sender_4513_and_the_peer_1000()
     {
         await using var relay = await RelayFixture.StartAsync(o => o.MaxFrameBytes = 4096);
-        await using var chrome = await OnlineAsync(relay);
-        var (dial, ext) = await OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        await using var chrome = await relay.OnlineAsync();
+        var (dial, ext) = await relay.OpenStreamAsync(chrome, "link", chrome.Link.Token);
         using var d = dial;
         using var e = ext;
         await Wire.SendBinaryAsync(dial, new byte[4097]);
@@ -188,8 +187,8 @@ public class StreamTests
     public async Task When_one_side_closes_the_other_gets_1000_never_the_peer_code()
     {
         await using var relay = await RelayFixture.StartAsync();
-        await using var chrome = await OnlineAsync(relay);
-        var (dial, ext) = await OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        await using var chrome = await relay.OnlineAsync();
+        var (dial, ext) = await relay.OpenStreamAsync(chrome, "link", chrome.Link.Token);
         using var d = dial;
         using var e = ext;
         await ext.CloseAsync((WebSocketCloseStatus)4003, "app code", TestContext.Current.CancellationToken);
@@ -202,8 +201,8 @@ public class StreamTests
     public async Task Losing_the_control_socket_closes_every_stream_of_that_relayId_1001()
     {
         await using var relay = await RelayFixture.StartAsync();
-        await using var chrome = await OnlineAsync(relay);
-        var (dial, ext) = await OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        await using var chrome = await relay.OnlineAsync();
+        var (dial, ext) = await relay.OpenStreamAsync(chrome, "link", chrome.Link.Token);
         using var d = dial;
         using var e = ext;
         using var pending = await relay.DialAsync(chrome.Chrome.RelayId, "pair", chrome.Pair.Token);
@@ -221,8 +220,8 @@ public class StreamTests
     public async Task A_replaced_registration_closes_the_older_socket_streams_1001_and_keeps_the_new_hashes()
     {
         await using var relay = await RelayFixture.StartAsync();
-        await using var chrome = await OnlineAsync(relay);
-        var (dial, ext) = await OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        await using var chrome = await relay.OnlineAsync();
+        var (dial, ext) = await relay.OpenStreamAsync(chrome, "link", chrome.Link.Token);
         using var d = dial;
         using var e = ext;
 
@@ -252,8 +251,8 @@ public class StreamTests
     public async Task Logs_never_carry_a_dial_token_its_hash_or_a_payload()
     {
         await using var relay = await RelayFixture.StartAsync();
-        await using var chrome = await OnlineAsync(relay);
-        var (dial, ext) = await OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        await using var chrome = await relay.OnlineAsync();
+        var (dial, ext) = await relay.OpenStreamAsync(chrome, "link", chrome.Link.Token);
         using var d = dial;
         using var e = ext;
         var payload = Encoding.ASCII.GetBytes("SECRET-PAYLOAD-0123456789");
@@ -270,42 +269,5 @@ public class StreamTests
         {
             Assert.DoesNotContain(secret, all, StringComparison.Ordinal);
         }
-    }
-
-    internal sealed record DialToken(string Token, string Hash);
-
-    internal sealed class Online(FakeChrome chrome, DialToken link, DialToken pair) : IAsyncDisposable
-    {
-        public FakeChrome Chrome { get; } = chrome;
-        public DialToken Link { get; } = link;
-        public DialToken Pair { get; } = pair;
-
-        public ValueTask DisposeAsync() => Chrome.DisposeAsync();
-    }
-
-    internal static (ECDsa Key, string RelayId, DialToken Link, DialToken Pair) Identity()
-    {
-        var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-        var relayId = DialTokens.RelayIdFromSpki(key.ExportSubjectPublicKeyInfo());
-        return (key, relayId, Make(DialTokens.LinkToken(RandomNumberGenerator.GetBytes(32), relayId)), Make(DialTokens.PairToken(Code, relayId)));
-
-        static DialToken Make(string token) => DialTokens.TryHash(token, out var hash) ? new DialToken(token, hash) : throw new InvalidOperationException();
-    }
-
-    /// <summary>A Chrome online with both a link and a pair token registered in its RELAY_REGISTER.</summary>
-    internal static async Task<Online> OnlineAsync(RelayFixture relay)
-    {
-        var (key, _, link, pair) = Identity();
-        return new Online(await relay.ChromeAsync(link.Hash, pair.Hash, key), link, pair);
-    }
-
-    internal static async Task<(ClientWebSocket Dial, ClientWebSocket Ext)> OpenStreamAsync(RelayFixture relay, Online chrome, string kind, string token)
-    {
-        var dial = await relay.DialAsync(chrome.Chrome.RelayId, kind, token);
-        var incoming = await chrome.Chrome.IncomingAsync();
-        Assert.Equal(kind == "link" ? RelayStreamKind.Link : RelayStreamKind.Pair, incoming.Kind);
-        var ext = await chrome.Chrome.AcceptAsync(incoming.StreamId);
-        Assert.IsType<RelayStreamOpen>(await Wire.ReceiveAsync(dial));
-        return (dial, ext);
     }
 }

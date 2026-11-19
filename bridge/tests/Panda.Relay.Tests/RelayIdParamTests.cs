@@ -47,7 +47,7 @@ public class RelayIdParamTests
     public async Task An_accept_whose_id_is_the_stream_owner_opens_the_stream()
     {
         await using var relay = await RelayFixture.StartAsync();
-        await using var chrome = await StreamTests.OnlineAsync(relay);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
         using var dial = await relay.DialAsync(chrome.Chrome.RelayId, "link", chrome.Link.Token);
         var incoming = await chrome.Chrome.IncomingAsync();
         using var ext = await chrome.Chrome.AcceptAsync(incoming.StreamId, $"&id={chrome.Chrome.RelayId}");
@@ -58,7 +58,7 @@ public class RelayIdParamTests
     public async Task An_accept_whose_id_is_not_the_owner_is_closed_4504_and_leaves_the_stream_to_its_real_accept()
     {
         await using var relay = await RelayFixture.StartAsync();
-        await using var chrome = await StreamTests.OnlineAsync(relay);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
         using var dial = await relay.DialAsync(chrome.Chrome.RelayId, "link", chrome.Link.Token);
         var incoming = await chrome.Chrome.IncomingAsync();
 

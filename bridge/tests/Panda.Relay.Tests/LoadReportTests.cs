@@ -28,9 +28,9 @@ public class LoadReportTests
         var pairs = new List<(ClientWebSocket Dial, ClientWebSocket Ext)>();
         for (var i = 0; i < streams; i++) // one link slot per Chrome: one Chrome per stream
         {
-            var chrome = await StreamTests.OnlineAsync(relay);
+            var chrome = await RelayClient.OnlineAsync(relay);
             chromes.Add(chrome);
-            pairs.Add(await StreamTests.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token));
+            pairs.Add(await RelayClient.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token));
         }
 
         var payload = new byte[size];

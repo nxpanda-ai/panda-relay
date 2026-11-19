@@ -15,10 +15,10 @@ public class QuotaTests
     public async Task Crossing_the_byte_quota_closes_every_stream_of_that_Chrome_4529_and_refuses_new_dials_until_the_day_ends()
     {
         await using var relay = await RelayFixture.StartAsync(o => { o.BytesPerDay = 1000; o.ControlIdleTimeout = NoIdle; }, now: OneMinuteToMidnight);
-        await using var chrome = await StreamTests.OnlineAsync(relay);
-        await using var other = await StreamTests.OnlineAsync(relay);
-        var (dial, ext) = await StreamTests.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
-        var (otherDial, otherExt) = await StreamTests.OpenStreamAsync(relay, other, "link", other.Link.Token);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
+        await using var other = await RelayClient.OnlineAsync(relay);
+        var (dial, ext) = await RelayClient.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        var (otherDial, otherExt) = await RelayClient.OpenStreamAsync(relay, other, "link", other.Link.Token);
         using var d = dial;
         using var e = ext;
         using var od = otherDial;
@@ -37,7 +37,7 @@ public class QuotaTests
         Assert.Equal(900, (await Wire.ReceiveRawAsync(otherExt)).Bytes.Length);
 
         relay.Time.Advance(TimeSpan.FromSeconds(60)); // a new UTC day
-        var (again, againExt) = await StreamTests.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        var (again, againExt) = await RelayClient.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
         again.Dispose();
         againExt.Dispose();
     }
@@ -46,10 +46,10 @@ public class QuotaTests
     public async Task The_stream_quota_refuses_the_next_dial_4529_until_the_day_ends()
     {
         await using var relay = await RelayFixture.StartAsync(o => { o.StreamsPerDay = 2; o.ControlIdleTimeout = NoIdle; }, now: OneMinuteToMidnight);
-        await using var chrome = await StreamTests.OnlineAsync(relay);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
         for (var i = 0; i < 2; i++)
         {
-            var (dial, ext) = await StreamTests.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+            var (dial, ext) = await RelayClient.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
             await dial.CloseAsync(WebSocketCloseStatus.NormalClosure, "", TestContext.Current.CancellationToken);
             await Wire.ClosedAsync(ext);
             dial.Dispose();
@@ -59,7 +59,7 @@ public class QuotaTests
         using var third = await relay.DialAsync(chrome.Chrome.RelayId, "link", chrome.Link.Token);
         Assert.Equal((RelayCloseCodes.QuotaExceeded, "60"), await Wire.ClosedAsync(third));
         relay.Time.Advance(TimeSpan.FromMinutes(1));
-        var (next, nextExt) = await StreamTests.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        var (next, nextExt) = await RelayClient.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
         next.Dispose();
         nextExt.Dispose();
     }
@@ -72,14 +72,14 @@ public class QuotaTests
             o.StreamsPerDay = 1;
             o.RefusedDialsPerIpPerHour = 1000;
         });
-        await using var chrome = await StreamTests.OnlineAsync(relay);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
         for (var i = 0; i < 5; i++)
         {
             using var squatter = await relay.DialAsync(chrome.Chrome.RelayId, "link", null);
             Assert.Equal(RelayCloseCodes.DialRefused, (await Wire.ClosedAsync(squatter)).Code);
         }
 
-        var (dial, ext) = await StreamTests.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        var (dial, ext) = await RelayClient.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
         dial.Dispose();
         ext.Dispose();
     }
@@ -89,7 +89,7 @@ public class QuotaTests
     {
         await using var relay = await RelayFixture.StartAsync(o => { o.RefusedDialsPerIpPerHour = 2; o.ControlIdleTimeout = NoIdle; },
             now: new DateTimeOffset(2026, 10, 12, 12, 58, 30, TimeSpan.Zero));
-        await using var chrome = await StreamTests.OnlineAsync(relay);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
         for (var i = 0; i < 2; i++)
         {
             using var wrong = await relay.DialAsync(chrome.Chrome.RelayId, "link", chrome.Pair.Token);
@@ -102,7 +102,7 @@ public class QuotaTests
         Assert.Equal(RelayCloseCodes.DialerLimited, (await Wire.ClosedAsync(offline)).Code); // 4530 comes before 4504
 
         relay.Time.Advance(TimeSpan.FromSeconds(90));
-        var (dial, ext) = await StreamTests.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        var (dial, ext) = await RelayClient.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
         dial.Dispose();
         ext.Dispose();
     }
@@ -115,8 +115,8 @@ public class QuotaTests
             o.StreamsPerDay = 1;
             o.RefusedDialsPerIpPerHour = 1000;
         });
-        await using var chrome = await StreamTests.OnlineAsync(relay);
-        var (dial, ext) = await StreamTests.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token); // slot taken, quota used
+        await using var chrome = await RelayClient.OnlineAsync(relay);
+        var (dial, ext) = await RelayClient.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token); // slot taken, quota used
         using var d = dial;
         using var e = ext;
 
@@ -124,7 +124,7 @@ public class QuotaTests
         Assert.Equal(RelayCloseCodes.DialRefused, (await Wire.ClosedAsync(wrongToken)).Code); // 4501 before 4529
         using var overQuota = await relay.DialAsync(chrome.Chrome.RelayId, "link", chrome.Link.Token);
         Assert.Equal(RelayCloseCodes.QuotaExceeded, (await Wire.ClosedAsync(overQuota)).Code); // 4529 before 4509
-        var id = StreamTests.Identity();
+        var id = RelayClient.Identity();
         using var key = id.Key;
         using var offline = await relay.DialAsync(id.RelayId, "link", "not-a-token");
         Assert.Equal(RelayCloseCodes.NotOnline, (await Wire.ClosedAsync(offline)).Code); // 4504 before 4501

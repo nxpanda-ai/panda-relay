@@ -14,6 +14,8 @@ Run from `bridge/` (.NET 10 SDK per `global.json`; tests run on Microsoft.Testin
 | One project | `dotnet test --project tests/Panda.Relay.Tests` |
 | One class | `dotnet test --project tests/Panda.Relay.Tests -- --filter-class "*QuotaTests"` |
 | One test | `dotnet test --project tests/Panda.Relay.Tests -- --filter-method "*.<MethodName>"` |
+| Conformance suite (own step, never beside another test run) | `dotnet test --project tests/Panda.Relay.Conformance` |
+| Load report (explicit tests) | `dotnet test --project tests/Panda.Relay.Conformance -c Release --explicit only` |
 | Protocol check (repo root) | `node schema/codegen.mjs --check --only=cs` |
 | Regenerate C# (repo root) | `node schema/codegen.mjs --only=cs` |
 
@@ -41,6 +43,11 @@ Run from `bridge/` (.NET 10 SDK per `global.json`; tests run on Microsoft.Testin
   never a fixed port or port 0. Time-dependent code takes a `TimeProvider`; tests use `FakeTimeProvider`.
 - `schema/auth-vectors.json` is written by `schema/auth-vectors.py`, an independent implementation. Never edit the
   vectors to make a test pass.
+- `schema/relay-vectors.json` is written by `schema/relay-vectors.py` the same way. Never edit it to make a test pass.
+- The conformance suite (`tests/Panda.Relay.Conformance`) never references the relay's assembly
+  (`ConformanceGuardTests`): it is the contract for any relay, including a port to another language. A behaviour
+  change of the relay that a client can see needs a conformance test in the same change. It is not in
+  `panda-relay.slnx`: run it on its own after the solution's tests.
 - Comments that cite `spec §N`, `decisions.md` or plan names refer to the upstream repository.
 
 ## Forwarding path: zero allocation per message
@@ -60,5 +67,6 @@ and Kestrel below them still do).
 
 - Accepted changes are made upstream and come back with the next export. Keep a change small and focused: no
   reformatting or renaming across files.
-- Before opening one: the build has 0 warnings, all tests pass and the protocol check passes.
+- Before opening one: the build has 0 warnings, all tests pass (the conformance suite too, as its own step) and the
+  protocol check passes.
 - AI-assisted commits carry a `Co-Authored-By:` trailer that names the agent.

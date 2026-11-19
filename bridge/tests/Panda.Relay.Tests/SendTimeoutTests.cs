@@ -13,8 +13,8 @@ public class SendTimeoutTests
     public async Task A_peer_that_stops_reading_is_cut_off_once_SendTimeout_passes_and_not_before()
     {
         await using var relay = await RelayFixture.StartAsync(o => o.ControlIdleTimeout = TimeSpan.FromHours(1));
-        await using var chrome = await StreamTests.OnlineAsync(relay);
-        var (dial, ext) = await StreamTests.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
+        var (dial, ext) = await RelayClient.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
         using var d = dial;
         using var e = ext; // never read from here on: the relay's send to it fills the TCP buffers and sticks
 

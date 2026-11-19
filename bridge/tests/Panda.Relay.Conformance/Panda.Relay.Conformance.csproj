@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- plan-relay-conformance D1: a black-box conformance suite for ANY relay executable (PANDA_RELAY_CMD; default:
+       the C# relay built from this repository), over HTTP / WebSocket only. Never references the relay's assembly:
+       the Panda.Relay reference below only makes the build produce the default relay first (guard: ConformanceGuardTests).
+       Not in Panda.slnx: run it on its own with dotnet test (the project option), plan v1.3 AC4 and README.md. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- Test names use Method_condition_result underscores by convention -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+    <!-- ChildJob's LibraryImport (the Windows Job object, AC5) -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="4.0.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="Panda.TestSupport" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Panda.Protocol\Panda.Protocol.csproj" />
+    <ProjectReference Include="..\..\src\Panda.Relay\Panda.Relay.csproj" ReferenceOutputAssembly="false" Private="false" />
+    <Compile Include="..\Shared\TestPorts.cs" Link="Shared\TestPorts.cs" />
+    <Compile Include="..\Shared\RepoPaths.cs" Link="Shared\RepoPaths.cs" />
+    <Compile Include="..\Shared\RelayClient.cs" Link="Shared\RelayClient.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- diagnostic messages = the relay restarts (D2); 8 classes at once caps the relay processes alive together -->
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

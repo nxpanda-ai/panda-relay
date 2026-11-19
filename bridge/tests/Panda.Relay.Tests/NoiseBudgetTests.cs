@@ -33,7 +33,7 @@ public class NoiseBudgetTests
         return await Wire.ClosedAsync(ws);
     }
 
-    private static string OfflineId() => StreamTests.Identity().RelayId;
+    private static string OfflineId() => RelayClient.Identity().RelayId;
 
     [Fact]
     public async Task Retrying_offline_relayIds_costs_one_unit_per_relayId()
@@ -49,8 +49,8 @@ public class NoiseBudgetTests
             }
         }
 
-        await using var chrome = await StreamTests.OnlineAsync(relay); // the IP can still reach an online Chrome
-        var (dial, ext) = await StreamTests.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
+        await using var chrome = await RelayClient.OnlineAsync(relay); // the IP can still reach an online Chrome
+        var (dial, ext) = await RelayClient.OpenStreamAsync(relay, chrome, "link", chrome.Link.Token);
         dial.Dispose();
         ext.Dispose();
     }
@@ -59,7 +59,7 @@ public class NoiseBudgetTests
     public async Task Distinct_offline_relayIds_over_the_budget_close_that_IPs_dials_4530_with_the_seconds_left()
     {
         await using var relay = await BudgetAsync(budget: 3);
-        await using var chrome = await StreamTests.OnlineAsync(relay);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
         for (var i = 0; i < 3; i++)
         {
             Assert.Equal(RelayCloseCodes.NotOnline, await DialCodeAsync(relay, OfflineId()));
@@ -69,8 +69,8 @@ public class NoiseBudgetTests
         Assert.Equal((RelayCloseCodes.DialerLimited, "60"), await Wire.ClosedAsync(dial));
 
         relay.Time.Advance(TimeSpan.FromSeconds(60)); // a new hour (the idle Chrome's control socket closes too)
-        await using var again = await StreamTests.OnlineAsync(relay);
-        var (d, e) = await StreamTests.OpenStreamAsync(relay, again, "link", again.Link.Token);
+        await using var again = await RelayClient.OnlineAsync(relay);
+        var (d, e) = await RelayClient.OpenStreamAsync(relay, again, "link", again.Link.Token);
         d.Dispose();
         e.Dispose();
     }
@@ -89,7 +89,7 @@ public class NoiseBudgetTests
     {
         // C1 critic #2: the same refusal branch as an unknown streamId
         await using var relay = await BudgetAsync(budget: 1);
-        await using var chrome = await StreamTests.OnlineAsync(relay);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
         using var dial = await relay.DialAsync(chrome.Chrome.RelayId, "link", chrome.Link.Token);
         var incoming = await chrome.Chrome.IncomingAsync();
         using (var wrong = await chrome.Chrome.AcceptAsync(incoming.StreamId, $"&id={OfflineId()}"))
@@ -117,7 +117,7 @@ public class NoiseBudgetTests
     public async Task Over_the_budget_a_known_pending_accept_still_opens_and_registrations_still_work()
     {
         await using var relay = await BudgetAsync(budget: 1);
-        await using var chrome = await StreamTests.OnlineAsync(relay);
+        await using var chrome = await RelayClient.OnlineAsync(relay);
         using var dial = await relay.DialAsync(chrome.Chrome.RelayId, "link", chrome.Link.Token);
         var incoming = await chrome.Chrome.IncomingAsync();
         Assert.Equal(RelayCloseCodes.NotOnline, await DialCodeAsync(relay, OfflineId())); // the budget is now spent
