@@ -8,6 +8,13 @@ accounts: a person pastes a one-time connection code from the extension into the
 This repository contains the relay server (`panda-relay`), the protocol library it shares with the Panda app, their
 tests, and the protocol schema. It does not contain the extension or the Panda app (`panda-browser`).
 
+There are two implementations of the same relay:
+
+- **The C# relay** (`bridge/src/Panda.Relay`) is the one Panda runs in production.
+- **The Go relay** (`relay-go/`) is a port with the same command line, wire contract, close codes and log events. It
+  passes the same conformance suite, but it is not a drop-in replacement yet. `relay-go/README.md` lists what differs
+  and the load numbers.
+
 ## Trust model
 
 - **The relay is trusted for availability only.** It routes connections by a Chrome's relay id. It admits a dial by
@@ -39,11 +46,14 @@ bridge/                      the .NET solution (the folder name comes from the P
   tests/Panda.Relay.Conformance/  black-box conformance suite + load report for any relay executable (its own step)
   tests/Shared/              test helpers (free ports, repository root, the relay client)
   VERSION                    the Panda release this copy comes from
+relay-go/                    the Go relay: module github.com/nxpanda-ai/panda-relay/relay-go (its own README)
 schema/
-  protocol.v1.json           the protocol: one source of truth for C# and TypeScript
-  codegen.mjs                generates bridge/src/Panda.Protocol/Protocol/Protocol.g.cs (and the extension's TS)
+  protocol.v1.json           the protocol: one source of truth for C#, TypeScript and Go
+  codegen.mjs                generates bridge/src/Panda.Protocol/Protocol/Protocol.g.cs,
+                             relay-go/internal/protocol/protocol.g.go (and the extension's TS)
   auth-vectors.json / .py    test vectors from an independent Python implementation
   relay-vectors.json / .py   relayId and dial-token vectors, also independent (the conformance suite checks them)
+  fixtures/                  relay messages both parsers must accept or refuse; golden/ is written by upstream tests
 docs/deploy/caddy/           a systemd unit and a Caddyfile for the relay behind Caddy
 ```
 
@@ -77,6 +87,24 @@ dotnet test --project tests/Panda.Relay.Conformance
 By default it tests the relay built from this repository. `PANDA_RELAY_CMD=<native executable>` tests another one.
 The same project holds a load report (explicit tests, never part of a normal run). Its README has the variables, the
 coverage, the load scenarios and the obligations a black-box run cannot check.
+
+## The Go relay
+
+You need Go; `relay-go/go.mod` names the toolchain, and the go command fetches it the first time (network access to
+the Go proxy).
+
+```
+cd relay-go
+go vet ./... && go test ./...
+go build -trimpath -o bin/panda-relay ./cmd/panda-relay     # bin/panda-relay.exe on Windows
+cd ../bridge                                                # on Windows: bin/panda-relay.exe below
+PANDA_RELAY_CMD=$PWD/../relay-go/bin/panda-relay PANDA_RELAY_LABEL=relay-go dotnet test --project tests/Panda.Relay.Conformance
+cd ..
+node schema/codegen.mjs --check --only=go
+```
+
+It takes the same options as the C# relay. `relay-go/README.md` covers building, the obligations the Go tests cover,
+what is not met or differs, and the load report.
 
 ## Run
 
@@ -116,7 +144,9 @@ To publish a self-contained Linux build:
 This repository is exported from the Panda AI Browser repository by a script, as a byte-for-byte copy of committed
 files. That is why:
 
-- comments cite plans, spec sections (`spec §78`) and `decisions.md` of that repository;
+- comments cite plans, spec sections (`spec §78`), `decisions.md` and test files of that repository;
+- one Go test (`TestNoMessageOfAnotherChannelIsARelayMessage`) skips here: its bridge-channel fixtures stay there. It
+  skips because of the `.panda-relay-export` file at the root; keep that file;
 - the namespaces of `Panda.Protocol` are `Panda.Bridge.*`, because the same files build the Panda app;
 - `InternalsVisibleTo` names assemblies that are not in this repository.
 

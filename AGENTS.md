@@ -19,6 +19,16 @@ Run from `bridge/` (.NET 10 SDK per `global.json`; tests run on Microsoft.Testin
 | Protocol check (repo root) | `node schema/codegen.mjs --check --only=cs` |
 | Regenerate C# (repo root) | `node schema/codegen.mjs --only=cs` |
 
+The Go relay, from `relay-go/` (the toolchain is the `go.mod` one; never build it with `GOTOOLCHAIN=local` on an
+older Go):
+
+| Task | Command |
+|---|---|
+| Vet + all tests | `go vet ./... && go test ./...` |
+| Build | `go build -trimpath -o bin/panda-relay ./cmd/panda-relay` (`.exe` on Windows) |
+| Conformance against it (from `bridge/`) | `PANDA_RELAY_CMD=<abs path to the binary> PANDA_RELAY_LABEL=relay-go dotnet test --project tests/Panda.Relay.Conformance` |
+| Protocol check / regenerate (repo root) | `node schema/codegen.mjs --check --only=go` / `node schema/codegen.mjs --only=go` |
+
 ## Security rules (the relay is trusted for availability only)
 
 - Never add an authorisation decision to the relay. Who may drive a Chrome is decided end to end by the agent's
@@ -50,6 +60,18 @@ Run from `bridge/` (.NET 10 SDK per `global.json`; tests run on Microsoft.Testin
   `panda-relay.slnx`: run it on its own after the solution's tests.
 - Comments that cite `spec §N`, `decisions.md` or plan names refer to the upstream repository.
 
+## Go relay rules (`relay-go/`)
+
+- It is a port of the C# relay, judged by the same conformance suite. Never edit the suite, the C# relay or
+  `Panda.Protocol` to make the Go relay pass.
+- `relay-go/internal/protocol/protocol.g.go` is generated (`node schema/codegen.mjs --only=go`). Never edit it by hand.
+- `schema/fixtures/golden/*.json` are written by upstream tests that are not in this repository. Never edit them.
+- `relay-go/internal/hosted/testdata/connection-codes.txt` holds rows measured on .NET. Never edit it by hand.
+- Same security rules as above: no log line holds a connection code, dial token, tunnel byte, query string or header
+  value.
+- Time-dependent code takes the `clock` package's clock; tests use `clock.Fake`.
+- `gofmt -l .` must print nothing (`.gitattributes` keeps `.go` files LF on Windows).
+
 ## Forwarding path: zero allocation per message
 
 `RelayHub.PumpAsync` and `RelaySocket` allocate nothing in Panda code per forwarded message (the .NET WebSocket
@@ -68,5 +90,6 @@ and Kestrel below them still do).
 - Accepted changes are made upstream and come back with the next export. Keep a change small and focused: no
   reformatting or renaming across files.
 - Before opening one: the build has 0 warnings, all tests pass (the conformance suite too, as its own step) and the
-  protocol check passes.
+  protocol check passes. A change under `relay-go/` also passes `go vet`, `go test` and the conformance suite against
+  the Go binary.
 - AI-assisted commits carry a `Co-Authored-By:` trailer that names the agent.

@@ -1,0 +1,151 @@
+# ConnectionCode.TryParse (bridge/src/Panda.Protocol/Relay/ConnectionCode.cs:26-71) MEASURED 2026-11-20 with a probe console
+# on .NET 10: <OK|NO> TAB <relayId> TAB <input with C# Regex.Unescape escapes>. Never edit by hand: re-measure.
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#abcdefghijklmnopqrstuvwxyz
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDE-FGHIJ-KLMNO-PQRST-UVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDE FGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDE%20FGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	  panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ \t\n
+OK	AbCdEfGhIjKlMnOpQrSt_-	 panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	PANDA-RELAY://RELAY.TEST/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	Panda-Relay://relay.test:443/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test:8443/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test:0/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test:65535/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test:65536/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test:/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay+ws://127.0.0.1:8080/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay+ws://localhost/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay+ws://[::1]:9/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay+ws://127.0.0.2/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay+ws://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay+WS://127.0.0.1/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		https://relay.test/c/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-?#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-?a=1#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://u@relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://@relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-/#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test//AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/x/../AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/./AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/%41bCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt%5F-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test\\AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIj\tKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay:/relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay:relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay:///AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ#
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYİ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_ı#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://rélay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test./AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://RELAY.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://[fe80::1%25eth0]/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://[::1]/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://1.2.3.4/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay_test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZA
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXY1
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXY%41
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDE­FGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-​#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test:08443/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test:+443/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://0x7f.1/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay+ws://0x7f.1/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay+ws://127.1/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay+ws://[::ffff:127.0.0.1]/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLM\tNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLM\nNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLM\\NOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLM"NOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLM{NOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLM?NOPQRSTUVWXYZ
+NO		xAbCdEfGhIjKlMnOpQrSt_-
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#  ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ-
+NO		panda-relay://relay.test:443:1/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-;x#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-%#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a!b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a<b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a%41b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a~b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a*b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a,b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://-relay/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a..b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a"b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a{b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a'b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a(b)/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a;b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a=b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a&b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a$b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a+b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a|b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a^b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a`b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://[::1/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://[zz]/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://::1/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://[::1]x/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://a\u0000b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://\u4e2d\u6587/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://xn--fiq228c/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://a.b.c.d.e/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://300.1.1.1/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay+ws://LOCALHOST/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay+ws://localhost./AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay+ws://127.000.0.1/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay+ws://127.255.255.255/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay+ws://[0:0:0:0:0:0:0:1]/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay+ws://[::1%25lo]/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay+ws://0.0.0.0/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay+ws://2130706433/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/%2E%2E/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/x/%2E%2E/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-/.#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-/x/..#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt%5f-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_%2D#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXY%5a
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ%2D
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ%7E
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ%25
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ%2
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ%20
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ%2d%2D
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#AB\u00e9CDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ\u0000
+NO		panda-relay://relay.test/Ab\u0000CdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#\u000bABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test\u000b/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	\u000bpanda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ\u0085
+NO		panda-relay ://relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay+ws+x://127.0.0.1/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test:443/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test:4294967297/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test:00000000000443/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test?x/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/x\\..\\AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://relay.test/x/..\\AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/AbCdEfGhIjKlMnOpQrSt_-\\#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test\\x/../AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay://relay.test/x%5C..%5CAbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+NO		panda-relay+ws://\uff4c\uff4f\uff43\uff41\uff4c\uff48\uff4f\uff53\uff54/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay://\uff52elay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay:\\\\relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay:/\\relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
+OK	AbCdEfGhIjKlMnOpQrSt_-	panda-relay:\\/relay.test/AbCdEfGhIjKlMnOpQrSt_-#ABCDEFGHIJKLMNOPQRSTUVWXYZ
