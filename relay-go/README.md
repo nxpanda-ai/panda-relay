@@ -117,8 +117,9 @@ Results on 2026-11-20 (Windows, the machine the port was written on):
   - an oversized text message with invalid UTF-8: Go closes 4513, .NET closes 1007;
   - `%25` inside query keys.
 - **Hosted admin client:**
-  - The JSON body is escaped differently from System.Text.Json (`<` vs `<`, raw non-ASCII). It is the
-    same JSON value.
+  - The JSON body is escaped differently from System.Text.Json: Go writes `<` as `\u003c` where
+    System.Text.Json writes `\u003C`, and Go leaves non-ASCII raw where System.Text.Json escapes it.
+    It is the same JSON value.
   - A response charset other than UTF-8 is ignored. C# would throw, which means failed.
   - `ParseCode` follows the measured rows. Beyond them it uses two assumptions (UNVERIFIED): a control character
     anywhere refuses, and a non-ASCII host character must be a letter, digit or mark.
