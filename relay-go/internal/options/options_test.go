@@ -65,6 +65,13 @@ func TestRefusedCommandLines(t *testing.T) {
 		{"an empty MCP URL alone (given, so the hosted set is checked)", []string{"--public-host", host, "--hosted-mcp-url", ""}},
 		{"a blank token file alone", []string{"--public-host", host, "--hosted-admin-token-file", tokenFile(t, " \r\n")}},
 		{"a token file that does not exist", []string{"--public-host", host, "--hosted-admin-url", "http://127.0.0.1:47822", "--hosted-admin-token-file", filepath.Join(t.TempDir(), "none"), "--hosted-mcp-url", mcp}},
+		// plan-relay-rename D1
+		{"an alias equal to the public host", []string{"--public-host", host, "--alias-host", host}},
+		{"a repeated alias", []string{"--public-host", host, "--alias-host", "old.test:443", "--alias-host", "old.test:443"}},
+		{"an upper-case alias", []string{"--public-host", host, "--alias-host", "Old.Test:443"}},
+		{"an alias port 0", []string{"--public-host", host, "--alias-host", "old.test:0"}},
+		{"an alias with a scheme", []string{"--public-host", host, "--alias-host", "https://old.test"}},
+		{"an alias without its value", []string{"--public-host", host, "--alias-host"}},
 	}
 	for _, r := range rows {
 		t.Run(r.why, func(t *testing.T) {
@@ -100,6 +107,30 @@ func TestAcceptedCommandLines(t *testing.T) {
 				t.Fatalf("refused: %v", err)
 			}
 		})
+	}
+}
+
+// plan-relay-rename D1 / D1b: aliases are kept in order; the MCP URL for an alias is the configured one on its name.
+func TestAliasHosts(t *testing.T) {
+	o, err := Parse([]string{"--public-host", "new.test", "--alias-host", "old.test", "--alias-host", "older.test:8443"})
+	if err != nil || len(o.AliasHosts) != 2 || o.AliasHosts[0] != "old.test" || o.AliasHosts[1] != "older.test:8443" {
+		t.Fatalf("%+v %v", o, err)
+	}
+	if d, _ := Parse([]string{"--public-host", "new.test"}); len(d.AliasHosts) != 0 {
+		t.Fatalf("aliases by default: %v", d.AliasHosts)
+	}
+	for _, c := range []struct{ mcp, host, want string }{
+		{"https://new.test/mcp", "old.test:443", "https://old.test/mcp"},
+		{"https://new.test/mcp", "old.test", "https://old.test/mcp"},
+		{"https://new.test:8443/x/mcp", "old.test", "https://old.test:8443/x/mcp"},
+		{"https://new.test:443/mcp", "old.test", "https://old.test/mcp"}, // .NET AbsoluteUri drops the default port
+		{"https://new.test/mcp", "new.test", "https://new.test/mcp"},     // the primary: as configured
+	} {
+		o := Default("new.test")
+		o.HostedMCPURL = c.mcp
+		if got := o.MCPURLFor(c.host); got != c.want {
+			t.Errorf("MCPURLFor(%q) of %q = %q, want %q", c.host, c.mcp, got, c.want)
+		}
 	}
 }
 

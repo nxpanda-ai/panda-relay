@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/netip"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -26,12 +27,14 @@ import (
 // Hosted forwards RELAY_HOST / ROTATE / UNHOST to the hosted bridge (HostedAdmin.cs; plan-relay-go T6, seam S5).
 type Hosted interface {
 	Configured() bool
-	Run(relayID string, request protocol.RelayMessage) protocol.RelayHostResult
+	// Run: linkHost is the host the link's proof verified for — an MCP URL in the answer is on it (plan-relay-rename D1b)
+	Run(relayID, linkHost string, request protocol.RelayMessage) protocol.RelayHostResult
 }
 
 // browserLink is a registered control socket: the Chrome online under a relayId (S1).
 type browserLink struct {
 	relayID  string
+	host     string // plan-relay-rename D1: the host its RELAY_REGISTER proof verified for (public or an alias)
 	sock     *socket.Socket
 	linkHash *string                                   // under Hub.mu
 	pairHash *string                                   // under Hub.mu
@@ -46,6 +49,7 @@ type Hub struct {
 	online    map[string]*browserLink
 	pending   map[string]*relayStream // streamId → stream waiting for its accept
 	notOnline *quotas.NotOnlineLog    // under mu
+	aliasUse  quotas.AliasUseLog      // under mu (plan-relay-rename D6)
 	stopping  bool                    // under mu: CloseAll ran (graceful stop)
 
 	o               *options.Options
@@ -161,15 +165,19 @@ func (h *Hub) register(sock *socket.Socket, ip netip.Addr, claimed *string) *bro
 		return nil
 	}
 
-	spki, ok := auth.VerifyRegistration(register.Spki, register.Sig, nonce, h.o.PublicHost)
+	// plan-relay-rename D1: the public host first, then each alias; a refused proof is refused (and logged) once
+	spki, host, ok := h.verifyForAnyHost(register, nonce)
 	if !ok || (claimed != nil && *claimed != auth.RelayIDFromSPKI(spki)) {
 		logx.Info("registration proof refused from %s", ip)
 		closeAndDrain(sock, protocol.CloseRegistrationInvalid, "")
 		return nil
 	}
+	if host != h.o.PublicHost {
+		h.countAliasUse(quotas.Registration)
+	}
 
-	link := &browserLink{relayID: auth.RelayIDFromSPKI(spki), sock: sock, linkHash: register.Link, pairHash: register.Pair,
-		slots: map[protocol.RelayStreamKind]*relayStream{}}
+	link := &browserLink{relayID: auth.RelayIDFromSPKI(spki), host: host, sock: sock, linkHash: register.Link,
+		pairHash: register.Pair, slots: map[protocol.RelayStreamKind]*relayStream{}}
 	if !send(sock, protocol.RelayRegistered{RelayId: link.relayID}) {
 		sock.Drain()
 		return nil
@@ -189,6 +197,38 @@ func (h *Hub) register(sock *socket.Socket, ip netip.Addr, claimed *string) *bro
 	}
 	logx.Info("registered %s from %s", link.relayID, ip)
 	return link
+}
+
+// verifyForAnyHost is RelayHub.VerifyForAnyHost: the SPKI and the host the proof verified for, the public host first.
+func (h *Hub) verifyForAnyHost(register protocol.RelayRegister, nonce []byte) ([]byte, string, bool) {
+	for _, host := range append([]string{h.o.PublicHost}, h.o.AliasHosts...) {
+		if spki, ok := auth.VerifyRegistration(register.Spki, register.Sig, nonce, host); ok {
+			return spki, host, true
+		}
+	}
+	return nil, "", false
+}
+
+// isAliasHost: the request's Host names an alias host (case-insensitive, as DNS names are).
+func (h *Hub) isAliasHost(requestHost string) bool {
+	for _, a := range h.o.AliasHosts {
+		if strings.EqualFold(a, requestHost) {
+			return true
+		}
+	}
+	return false
+}
+
+// countAliasUse (plan-relay-rename D6): counted under the lock; the hour's first use is logged with the last used
+// hour's counts — never one line per event, never a relayId.
+func (h *Hub) countAliasUse(use quotas.AliasUse) {
+	h.mu.Lock()
+	first, lastHour, registrations, dials := h.aliasUse.Count(use, h.clock.Now())
+	h.mu.Unlock()
+	if first {
+		logx.Info("alias host in use this hour (first: %s); last hour with use %s: %d registrations, %d dials", use,
+			quotas.HourName(lastHour), registrations, dials)
+	}
 }
 
 // controlLoop is ControlLoopAsync (RelayHub.cs:214-257).
@@ -271,7 +311,7 @@ func (h *Hub) startHosting(link *browserLink, request protocol.RelayMessage) {
 		return
 	}
 	go func() {
-		result := h.runHosted(link.relayID, request, seq)
+		result := h.runHosted(link.relayID, link.host, request, seq)
 		if capped {
 			h.hostingInFlight.Add(-1)
 		}
@@ -280,14 +320,14 @@ func (h *Hub) startHosting(link *browserLink, request protocol.RelayMessage) {
 	}()
 }
 
-func (h *Hub) runHosted(relayID string, request protocol.RelayMessage, seq int64) (result protocol.RelayHostResult) {
+func (h *Hub) runHosted(relayID, linkHost string, request protocol.RelayMessage, seq int64) (result protocol.RelayHostResult) {
 	defer func() {
 		if p := recover(); p != nil {
 			logx.Warn("Hosting request of relay %s failed with %T", relayID, p) // a bug, not an answer: the Chrome hears failed
 			result = hostFailure(seq, protocol.RelayHostErrorFailed)
 		}
 	}()
-	return h.hosted.Run(relayID, request)
+	return h.hosted.Run(relayID, linkHost, request)
 }
 
 // closeLink takes a Chrome offline: its slots and pending streamIds go first, then every socket is closed

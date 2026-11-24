@@ -43,8 +43,12 @@ internal sealed partial class HostedAdmin : IDisposable
         _ => throw new ArgumentException("not a hosting request", nameof(request)),
     };
 
-    /// <summary>The result for <paramref name="request"/> from the Chrome registered as <paramref name="relayId"/>.</summary>
-    public async Task<RelayHostResult> RunAsync(string relayId, IRelayMessage request)
+    /// <summary>
+    /// The result for <paramref name="request"/> from the Chrome registered as <paramref name="relayId"/> for
+    /// <paramref name="linkHost"/> (the host its proof verified for: an MCP URL in the answer is on it — plan-relay-rename
+    /// D1b; worked out for an add / rotate only, so an unhost never depends on it — diff critic F4).
+    /// </summary>
+    public async Task<RelayHostResult> RunAsync(string relayId, string linkHost, IRelayMessage request)
     {
         switch (request)
         {
@@ -59,11 +63,11 @@ internal sealed partial class HostedAdmin : IDisposable
                     return Failed(host.Seq, RelayHostError.Mismatch); // a code for another Chrome never leaves the relay
                 }
 
-                return await PostAsync(relayId, host.Seq, "add", new JsonObject { ["code"] = host.Code, ["tokenSha256"] = host.TokenSha256 }, withUrl: true);
+                return await PostAsync(relayId, host.Seq, "add", new JsonObject { ["code"] = host.Code, ["tokenSha256"] = host.TokenSha256 }, _options.McpUrlFor(linkHost));
             case RelayRotate rotate:
-                return await PostAsync(relayId, rotate.Seq, "rotate", new JsonObject { ["relayId"] = relayId, ["tokenSha256"] = rotate.TokenSha256 }, withUrl: true);
+                return await PostAsync(relayId, rotate.Seq, "rotate", new JsonObject { ["relayId"] = relayId, ["tokenSha256"] = rotate.TokenSha256 }, _options.McpUrlFor(linkHost));
             case RelayUnhost unhost:
-                return await PostAsync(relayId, unhost.Seq, "remove", new JsonObject { ["relayId"] = relayId }, withUrl: false);
+                return await PostAsync(relayId, unhost.Seq, "remove", new JsonObject { ["relayId"] = relayId }, mcpUrl: null);
             default:
                 throw new ArgumentException("not a hosting request", nameof(request));
         }
@@ -73,7 +77,7 @@ internal sealed partial class HostedAdmin : IDisposable
 
     private static RelayHostResult Failed(long seq, RelayHostError error) => new(seq, false, Error: error);
 
-    private async Task<RelayHostResult> PostAsync(string relayId, long seq, string action, JsonObject body, bool withUrl)
+    private async Task<RelayHostResult> PostAsync(string relayId, long seq, string action, JsonObject body, string? mcpUrl)
     {
         HttpStatusCode status;
         string? errorCode;
@@ -88,7 +92,7 @@ internal sealed partial class HostedAdmin : IDisposable
             status = response.StatusCode;
             if (status == HttpStatusCode.OK)
             {
-                return new RelayHostResult(seq, true, withUrl ? _options.HostedMcpUrl : null);
+                return new RelayHostResult(seq, true, mcpUrl);
             }
 
             errorCode = ErrorCode(await response.Content.ReadAsStringAsync());

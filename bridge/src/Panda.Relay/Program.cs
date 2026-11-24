@@ -4,7 +4,7 @@ using System.Net;
 namespace Panda.Relay;
 
 /// <summary>
-/// <c>panda-relay --public-host &lt;host[:port]&gt; [--listen &lt;ip&gt;] [--port &lt;n&gt;] [--bytes-per-day &lt;n&gt;]
+/// <c>panda-relay --public-host &lt;host[:port]&gt; [--alias-host &lt;host[:port]&gt;]... [--listen &lt;ip&gt;] [--port &lt;n&gt;] [--bytes-per-day &lt;n&gt;]
 /// [--streams-per-day &lt;n&gt;] [--trusted-proxy &lt;ip|cidr&gt;]... [--client-ip-header &lt;name&gt;] [--max-hosting &lt;n&gt;] [--internal-port &lt;n&gt;] [--noise-per-ip-per-hour &lt;n&gt;] [--hosted-admin-url &lt;http://127.0.0.1:port&gt; --hosted-admin-token-file &lt;path&gt;
 /// --hosted-mcp-url &lt;https://host/mcp&gt;]</c> (the last three: URL-only mode, all or none). The relay listens on plain HTTP (127.0.0.1:8080 by default) behind a
 /// TLS-terminating proxy; deployment and the real quota numbers are plan 7c.
@@ -15,7 +15,7 @@ public static class Program
     {
         if (!TryParse(args, out var options, out var error))
         {
-            await Console.Error.WriteLineAsync($"panda-relay: {error}\nusage: panda-relay --public-host <host[:port]> [--listen <ip>] [--port <n>] [--bytes-per-day <n>] [--streams-per-day <n>] [--trusted-proxy <ip|cidr>]... [--client-ip-header <name>] [--max-hosting <n>] [--internal-port <n>] [--noise-per-ip-per-hour <n>] [--hosted-admin-url <http://127.0.0.1:port> --hosted-admin-token-file <path> --hosted-mcp-url <https://host/mcp>]");
+            await Console.Error.WriteLineAsync($"panda-relay: {error}\nusage: panda-relay --public-host <host[:port]> [--alias-host <host[:port]>]... [--listen <ip>] [--port <n>] [--bytes-per-day <n>] [--streams-per-day <n>] [--trusted-proxy <ip|cidr>]... [--client-ip-header <name>] [--max-hosting <n>] [--internal-port <n>] [--noise-per-ip-per-hour <n>] [--hosted-admin-url <http://127.0.0.1:port> --hosted-admin-token-file <path> --hosted-mcp-url <https://host/mcp>]");
             return 2;
         }
 
@@ -46,6 +46,7 @@ public static class Program
         string? hostedTokenFile = null;
         string? hostedMcpUrl = null;
         List<IPNetwork> trustedProxies = [];
+        List<string> aliasHosts = [];
         string? clientIpHeader = null;
         int? maxHosting = null;
         int? internalPort = null;
@@ -58,6 +59,9 @@ public static class Program
             {
                 case "--public-host" when value is not null:
                     host = value;
+                    break;
+                case "--alias-host" when value is not null: // plan-relay-rename D1: checked by Validate (shape, once, not the primary)
+                    aliasHosts.Add(value);
                     break;
                 case "--listen" when value is not null && IPAddress.TryParse(value, out var ip):
                     listen = ip;
@@ -139,6 +143,7 @@ public static class Program
             HostedMcpUrl = hostedMcpUrl,
         };
         foreach (var network in trustedProxies) options.TrustedProxies.Add(network);
+        foreach (var alias in aliasHosts) options.AliasHosts.Add(alias);
         if (clientIpHeader is not null) options.ClientIpHeader = clientIpHeader;
         if (maxHosting is { } cap) options.MaxHosting = cap;
         options.InternalPort = internalPort;

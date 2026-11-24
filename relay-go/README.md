@@ -30,14 +30,17 @@ go build -trimpath -o bin/panda-relay.exe ./cmd/panda-relay    # Windows
 The command line is the C# relay's (a command line it cannot run with prints the usage and exits 2):
 
 ```
-bin/panda-relay --public-host relay.example.com:443 [--listen <ip>] [--port <n>] [--trusted-proxy <ip|cidr>]...
-    [--client-ip-header <name>] [--bytes-per-day <n>] [--streams-per-day <n>] [--max-hosting <n>]
-    [--internal-port <n>] [--noise-per-ip-per-hour <n>]
+bin/panda-relay --public-host relay.example.com:443 [--alias-host <host[:port]>]... [--listen <ip>] [--port <n>]
+    [--trusted-proxy <ip|cidr>]... [--client-ip-header <name>] [--bytes-per-day <n>] [--streams-per-day <n>]
+    [--max-hosting <n>] [--internal-port <n>] [--noise-per-ip-per-hour <n>]
     [--hosted-admin-url http://127.0.0.1:<port> --hosted-admin-token-file <path> --hosted-mcp-url https://<host>/mcp]
 ```
 
 - Without `--listen`, the relay listens on loopback.
 - `--internal-port` always listens on 127.0.0.1.
+- `--alias-host` (repeatable) is an old name the relay still answers on: a Chrome that signed its registration for it is
+  accepted, and its hosted MCP URL is on that name. The first alias use of each UTC hour is logged with the counts of
+  the last hour that had a use (no relayId, no IP).
 - The relay logs one line per event to stdout. A log line never holds a connection code, dial token, tunnel byte,
   query string or header value.
 - SIGTERM or Ctrl+C stops the relay gracefully:

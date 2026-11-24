@@ -11,9 +11,12 @@ using Panda.Bridge.Relay;
 namespace Panda.Relay;
 
 /// <summary>A registered control socket: the Chrome online under a relayId (S1).</summary>
-internal sealed class BrowserLink(string relayId, RelaySocket socket, string? linkHash, string? pairHash)
+internal sealed class BrowserLink(string relayId, RelaySocket socket, string? linkHash, string? pairHash, string host)
 {
     public string RelayId { get; } = relayId;
+
+    /// <summary>plan-relay-rename D1: the host its RELAY_REGISTER proof verified for (the public host or an alias).</summary>
+    public string Host { get; } = host;
     public RelaySocket Socket { get; } = socket;
     public string? LinkHash { get; set; } = linkHash;
     public string? PairHash { get; set; } = pairHash;
@@ -71,6 +74,7 @@ internal sealed partial class RelayHub
     private readonly TimeProvider _time;
     private readonly RelayQuotas _quotas;
     private readonly NotOnlineLog _notOnlineLog; // under _gate
+    private readonly AliasUseLog _aliasUse = new(); // under _gate
     private readonly ILogger<RelayHub> _logger;
     private readonly HostedAdmin _hosted;
     private int _hostingInFlight; // plan-relay-deploy C3: hosted calls running, all sockets (Interlocked)
@@ -180,15 +184,21 @@ internal sealed partial class RelayHub
             return null;
         }
 
-        if (RegistrationProof.Verify(register, nonce, _options.PublicHost) is not { } spki
-            || (claimed is not null && !string.Equals(claimed, DialTokens.RelayIdFromSpki(spki), StringComparison.Ordinal)))
+        // plan-relay-rename D1: the public host first, then each alias; a refused proof is refused (and logged) once
+        var (spki, host) = VerifyForAnyHost(register, nonce);
+        if (spki is null || (claimed is not null && !string.Equals(claimed, DialTokens.RelayIdFromSpki(spki), StringComparison.Ordinal)))
         {
             LogRegistrationRefused(ip);
             await CloseAndDrainAsync(socket, RelayCloseCodes.RegistrationInvalid);
             return null;
         }
 
-        var link = new BrowserLink(DialTokens.RelayIdFromSpki(spki), socket, register.Link, register.Pair);
+        if (host != _options.PublicHost)
+        {
+            CountAliasUse(AliasUse.Registration);
+        }
+
+        var link = new BrowserLink(DialTokens.RelayIdFromSpki(spki), socket, register.Link, register.Pair, host);
         if (!await socket.SendTextAsync(ProtocolJson.SerializeRelay(new RelayRegistered(link.RelayId))))
         {
             await socket.DrainAsync();
@@ -209,6 +219,47 @@ internal sealed partial class RelayHub
 
         LogRegistered(link.RelayId, ip);
         return link;
+    }
+
+    /// <summary>plan-relay-rename D6: the request's Host names an alias host (case-insensitive, as DNS names are).</summary>
+    private bool IsAliasHost(string? requestHost) =>
+        requestHost is not null && _options.AliasHosts.Any(a => string.Equals(a, requestHost, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>The SPKI and the host the proof verified for: the public host first, then each alias; (null, "") when none.</summary>
+    private (byte[]? Spki, string Host) VerifyForAnyHost(RelayRegister register, byte[] nonce)
+    {
+        if (RegistrationProof.Verify(register, nonce, _options.PublicHost) is { } spki)
+        {
+            return (spki, _options.PublicHost);
+        }
+
+        foreach (var alias in _options.AliasHosts)
+        {
+            if (RegistrationProof.Verify(register, nonce, alias) is { } aliasSpki)
+            {
+                return (aliasSpki, alias);
+            }
+        }
+
+        return (null, "");
+    }
+
+    /// <summary>plan-relay-rename D6: counted under the gate; the hour's first use is logged with the last used hour's counts.</summary>
+    private void CountAliasUse(AliasUse use)
+    {
+        bool first;
+        DateTime? lastHour;
+        int registrations, dials;
+        lock (_gate)
+        {
+            first = _aliasUse.Count(use, Now, out lastHour, out registrations, out dials);
+        }
+
+        if (first)
+        {
+            var hour = AliasUseLog.Name(lastHour); // once an hour
+            LogAliasUse(use, hour, registrations, dials);
+        }
     }
 
     private async Task ControlLoopAsync(BrowserLink link)
@@ -293,7 +344,7 @@ internal sealed partial class RelayHub
             RelayHostResult result;
             try
             {
-                result = await _hosted.RunAsync(link.RelayId, request);
+                result = await _hosted.RunAsync(link.RelayId, link.Host, request);
             }
             catch (Exception ex)
             {
@@ -388,6 +439,12 @@ internal sealed partial class RelayHub
         using var socket = new RelaySocket(ws, _options, _time);
         if (query.Count == 2 && dial is not null && IsRelayId(dial) && kind is { } k)
         {
+            // plan-relay-rename D6: a dial on a renamed relay's old name (the internal listener's Host is loopback)
+            if (ip is not null && IsAliasHost(context.Request.Host.Value))
+            {
+                CountAliasUse(AliasUse.Dial);
+            }
+
             await RunDialAsync(socket, dial, k, token, ip);
         }
         else if (accept is not null && AuthCrypto.TryDecodeBase64Url(accept, 16, out _)
@@ -888,6 +945,9 @@ internal sealed partial class RelayHub
     // signatures, keys or payload (spec §37, §78.4).
     [LoggerMessage(Level = LogLevel.Information, Message = "registered {RelayId} from {Ip}")]
     private partial void LogRegistered(string relayId, IPAddress ip);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "alias host in use this hour (first: {Use}); last hour with use {LastHour}: {Registrations} registrations, {Dials} dials")]
+    private partial void LogAliasUse(AliasUse use, string lastHour, int registrations, int dials);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "registration proof refused from {Ip}")]
     private partial void LogRegistrationRefused(IPAddress ip);

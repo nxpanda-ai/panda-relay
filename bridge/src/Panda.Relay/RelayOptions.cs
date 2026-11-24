@@ -12,6 +12,13 @@ public sealed partial class RelayOptions
     /// <summary>The lowercase <c>host[:port]</c> extensions dial; RELAY_REGISTER signs it (S1), so it must match exactly.</summary>
     public required string PublicHost { get; set; }
 
+    /// <summary>
+    /// plan-relay-rename D1: further hosts this relay serves — a renamed relay's old name. Same shape as
+    /// <see cref="PublicHost"/>, distinct, never the primary. A RELAY_REGISTER signed for one of them verifies too, and
+    /// that link's hosted MCP URL is on its host (<see cref="McpUrlFor"/>, D1b).
+    /// </summary>
+    public IList<string> AliasHosts { get; } = [];
+
     public IPAddress ListenAddress { get; set; } = IPAddress.Loopback;
 
     /// <summary>0 = any free port (tests).</summary>
@@ -164,12 +171,38 @@ public sealed partial class RelayOptions
         return colon < 0 || int.Parse(host.AsSpan(colon + 1), System.Globalization.CultureInfo.InvariantCulture) is > 0 and <= 65535;
     }
 
+    private static bool IsHost(string? host) => !string.IsNullOrEmpty(host) && HostShape().IsMatch(host) && PortInRange(host);
+
+    /// <summary>
+    /// plan-relay-rename D1b: the MCP URL a Chrome registered for <paramref name="host"/> (the primary or an alias) is
+    /// told — <see cref="HostedMcpUrl"/> as configured for the primary; for an alias the same URL with that alias's name
+    /// as its host (scheme, port and path kept), canonical as the extension compares it (<c>URL.href</c>).
+    /// </summary>
+    internal string? McpUrlFor(string host)
+    {
+        if (HostedMcpUrl is null || host == PublicHost)
+        {
+            return HostedMcpUrl;
+        }
+
+        return new UriBuilder(HostedMcpUrl) { Host = host.Split(':')[0] }.Uri.AbsoluteUri;
+    }
+
     /// <summary>Throws <see cref="ArgumentException"/> for a configuration the relay cannot run with.</summary>
     public void Validate()
     {
-        if (string.IsNullOrEmpty(PublicHost) || !HostShape().IsMatch(PublicHost) || !PortInRange(PublicHost))
+        if (!IsHost(PublicHost))
         {
             throw new ArgumentException("PublicHost must be the lowercase host[:port] extensions dial", nameof(PublicHost));
+        }
+
+        var seen = new HashSet<string>(StringComparer.Ordinal) { PublicHost };
+        foreach (var alias in AliasHosts)
+        {
+            if (!IsHost(alias) || !seen.Add(alias))
+            {
+                throw new ArgumentException("each alias host must be a lowercase host[:port], once, and not the public host", nameof(AliasHosts));
+            }
         }
 
         if (ClientIpHeader is null || !HeaderName().IsMatch(ClientIpHeader))

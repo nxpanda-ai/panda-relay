@@ -16,11 +16,12 @@ import (
 )
 
 // Usage is printed after a refused command line (Program.cs:18).
-const Usage = "usage: panda-relay --public-host <host[:port]> [--listen <ip>] [--port <n>] [--bytes-per-day <n>] [--streams-per-day <n>] [--trusted-proxy <ip|cidr>]... [--client-ip-header <name>] [--max-hosting <n>] [--internal-port <n>] [--noise-per-ip-per-hour <n>] [--hosted-admin-url <http://127.0.0.1:port> --hosted-admin-token-file <path> --hosted-mcp-url <https://host/mcp>]"
+const Usage = "usage: panda-relay --public-host <host[:port]> [--alias-host <host[:port]>]... [--listen <ip>] [--port <n>] [--bytes-per-day <n>] [--streams-per-day <n>] [--trusted-proxy <ip|cidr>]... [--client-ip-header <name>] [--max-hosting <n>] [--internal-port <n>] [--noise-per-ip-per-hour <n>] [--hosted-admin-url <http://127.0.0.1:port> --hosted-admin-token-file <path> --hosted-mcp-url <https://host/mcp>]"
 
 // Options is RelayOptions.cs: the defaults below are the C# relay's.
 type Options struct {
 	PublicHost    string     // the lowercase host[:port] extensions dial; RELAY_REGISTER signs it
+	AliasHosts    []string   // plan-relay-rename D1: further hosts served (a renamed relay's old name); distinct, never PublicHost
 	ListenAddress netip.Addr // default loopback
 	Port          int        // 0 = any free port (tests)
 	InternalPort  *int       // C5: a second listener on 127.0.0.1 for the hosted bridge's dials; nil = none
@@ -109,6 +110,7 @@ func Parse(args []string) (*Options, error) {
 		internalPort, noise                              *int64
 		adminURL                                         *url.URL
 		proxies                                          []netip.Prefix
+		aliases                                          []string
 	)
 	for i := 0; i < len(args); i++ {
 		var value string
@@ -120,6 +122,10 @@ func Parse(args []string) (*Options, error) {
 		switch args[i] {
 		case "--public-host":
 			host, hostSet = value, ok
+		case "--alias-host": // plan-relay-rename D1: checked by Validate (shape, once, not the primary)
+			if ok {
+				aliases = append(aliases, value)
+			}
 		case "--listen":
 			a, err := netip.ParseAddr(value)
 			ok = ok && err == nil && a.Zone() == ""
@@ -200,6 +206,7 @@ func Parse(args []string) (*Options, error) {
 	o.HostedMCPURL = hostedMCP
 	o.hostedGiven = adminURL != nil || tokenFileSet || mcpSet
 	o.TrustedProxies = proxies
+	o.AliasHosts = aliases
 	if headerSet {
 		o.ClientIPHeader = clientIPHeader
 	}
@@ -306,10 +313,45 @@ func publicPortInRange(host string) bool {
 	return ok && v > 0 && v <= 65535
 }
 
+func isHost(h string) bool { return h != "" && hostShape.MatchString(h) && publicPortInRange(h) }
+
+// MCPURLFor is RelayOptions.McpUrlFor (plan-relay-rename D1b): the MCP URL a Chrome registered for host is told —
+// HostedMCPURL as configured for the primary; for an alias the same URL with that alias's name as its host (scheme,
+// port and path kept), canonical as .NET's Uri.AbsoluteUri and the extension's URL.href write it (lowercase scheme and
+// host, no default port).
+func (o *Options) MCPURLFor(host string) string {
+	if o.HostedMCPURL == "" || host == o.PublicHost {
+		return o.HostedMCPURL
+	}
+	u, err := url.Parse(o.HostedMCPURL)
+	if err != nil {
+		return o.HostedMCPURL // validated at start (validateHosted): never
+	}
+	u.Scheme = strings.ToLower(u.Scheme)
+	name := strings.SplitN(host, ":", 2)[0]
+	port := u.Port()
+	if port == "" || (u.Scheme == "https" && port == "443") || (u.Scheme == "http" && port == "80") {
+		u.Host = name
+	} else {
+		u.Host = name + ":" + port
+	}
+	if u.Path == "" {
+		u.Path = "/"
+	}
+	return u.String()
+}
+
 // Validate is RelayOptions.Validate: an error for a configuration the relay cannot run with.
 func (o *Options) Validate() error {
-	if o.PublicHost == "" || !hostShape.MatchString(o.PublicHost) || !publicPortInRange(o.PublicHost) {
+	if !isHost(o.PublicHost) {
 		return errors.New("PublicHost must be the lowercase host[:port] extensions dial")
+	}
+	seen := map[string]bool{o.PublicHost: true}
+	for _, a := range o.AliasHosts {
+		if !isHost(a) || seen[a] {
+			return errors.New("each alias host must be a lowercase host[:port], once, and not the public host")
+		}
+		seen[a] = true
 	}
 	if !headerName.MatchString(o.ClientIPHeader) {
 		return errors.New("ClientIpHeader must be an HTTP header name")

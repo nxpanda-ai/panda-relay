@@ -55,9 +55,10 @@ func New(o *options.Options) *Admin {
 // Configured: a hosted bridge was given (--hosted-admin-url and its set).
 func (a *Admin) Configured() bool { return a.o.HostedAdminURL != nil }
 
-// Run is RunAsync: the result for request from the Chrome registered as relayID. A request that is not a hosting one is
-// a programmer error (panic; the hub answers failed).
-func (a *Admin) Run(relayID string, request protocol.RelayMessage) protocol.RelayHostResult {
+// Run is RunAsync: the result for request from the Chrome registered as relayID for linkHost (an MCP URL in the answer
+// is on it, worked out for an add / rotate only — plan-relay-rename D1b). A request that is not a hosting one is a
+// programmer error (panic; the hub answers failed).
+func (a *Admin) Run(relayID, linkHost string, request protocol.RelayMessage) protocol.RelayHostResult {
 	switch r := request.(type) {
 	case protocol.RelayHost:
 		id, ok := ParseCode(r.Code)
@@ -70,26 +71,28 @@ func (a *Admin) Run(relayID string, request protocol.RelayMessage) protocol.Rela
 		return a.post(relayID, r.Seq, "add", struct {
 			Code        string `json:"code"`
 			TokenSha256 string `json:"tokenSha256"`
-		}{r.Code, r.TokenSha256}, true)
+		}{r.Code, r.TokenSha256}, a.mcpURLFor(linkHost))
 	case protocol.RelayRotate:
 		return a.post(relayID, r.Seq, "rotate", struct {
 			RelayID     string `json:"relayId"`
 			TokenSha256 string `json:"tokenSha256"`
-		}{relayID, r.TokenSha256}, true)
+		}{relayID, r.TokenSha256}, a.mcpURLFor(linkHost))
 	case protocol.RelayUnhost:
 		return a.post(relayID, r.Seq, "remove", struct {
 			RelayID string `json:"relayId"`
-		}{relayID}, false)
+		}{relayID}, nil)
 	default:
 		panic(fmt.Sprintf("hosted: not a hosting request: %T", request))
 	}
 }
 
+func (a *Admin) mcpURLFor(linkHost string) *string { u := a.o.MCPURLFor(linkHost); return &u }
+
 func failed(seq int64, e protocol.RelayHostError) protocol.RelayHostResult {
 	return protocol.RelayHostResult{Seq: seq, Ok: false, Error: &e}
 }
 
-func (a *Admin) post(relayID string, seq int64, action string, body any, withURL bool) protocol.RelayHostResult {
+func (a *Admin) post(relayID string, seq int64, action string, body any, mcpURL *string) protocol.RelayHostResult {
 	payload, err := json.Marshal(body) // strings only: cannot fail
 	if err != nil {
 		panic(err)
@@ -117,10 +120,7 @@ func (a *Admin) post(relayID string, seq int64, action string, body any, withURL
 	}
 	if resp.StatusCode == http.StatusOK {
 		result := protocol.RelayHostResult{Seq: seq, Ok: true}
-		if withURL {
-			u := a.o.HostedMCPURL
-			result.McpUrl = &u
-		}
+		result.McpUrl = mcpURL
 		return result
 	}
 

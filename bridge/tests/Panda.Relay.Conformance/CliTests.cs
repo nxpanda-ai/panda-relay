@@ -54,6 +54,10 @@ public class CliTests
         { "a zero daily byte quota", ["--public-host", Cli.Host, "--bytes-per-day", "0"] },
         { "an internal port equal to the public port", ["--public-host", Cli.Host, "--internal-port", "{port}"] },
         { "a hosting cap below one", ["--public-host", Cli.Host, "--max-hosting", "0"] },
+        // plan-relay-rename D1: an alias is a lowercase host[:port], given once, never the public host
+        { "an alias equal to the public host", ["--public-host", Cli.Host, "--alias-host", Cli.Host] },
+        { "a repeated alias", ["--public-host", Cli.Host, "--alias-host", "old.test:443", "--alias-host", "old.test:443"] },
+        { "an upper-case alias", ["--public-host", Cli.Host, "--alias-host", "Old.Test:443"] },
     };
 
     [Theory]

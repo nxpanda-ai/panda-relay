@@ -125,7 +125,7 @@ func TestRequestsAndSuccess(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			a, b := newAdmin(t, status(200, `{"browserId":"x"}`))
-			r := a.Run(relayID, c.request)
+			r := a.Run(relayID, "relay.test", c.request)
 			if !r.Ok || r.Seq != 7 || r.Error != nil || (r.McpUrl != nil) != c.url || (c.url && *r.McpUrl != mcpURL) {
 				t.Fatalf("result %+v", r)
 			}
@@ -160,7 +160,7 @@ func TestCodeCheckedBeforeForwarding(t *testing.T) {
 		{"panda-relay://relay.test/ZZZdEfGhIjKlMnOpQrSt_-#ABCDE-FGHIJ-KLMNO-PQRST-UVWXYZ", "mismatch"},
 	} {
 		a, b := newAdmin(t, status(200, "{}"))
-		r := a.Run(relayID, protocol.RelayHost{Seq: 1, Code: c.code, TokenSha256: sha})
+		r := a.Run(relayID, "relay.test", protocol.RelayHost{Seq: 1, Code: c.code, TokenSha256: sha})
 		if r.Ok || errorOf(r) != c.want || len(b.requests()) != 0 {
 			t.Fatalf("%q: %+v, %d requests", c.code, r, len(b.requests()))
 		}
@@ -209,7 +209,7 @@ func TestStatusMapping(t *testing.T) {
 		{204, ``, "failed"},
 	} {
 		a, _ := newAdmin(t, status(c.status, c.body))
-		r := a.Run(relayID, protocol.RelayUnhost{Seq: 3})
+		r := a.Run(relayID, "relay.test", protocol.RelayUnhost{Seq: 3})
 		if r.Ok || r.Seq != 3 || errorOf(r) != c.want || r.McpUrl != nil {
 			t.Errorf("%d %q: %+v, want %s", c.status, c.body, r, c.want)
 		}
@@ -229,7 +229,7 @@ func TestNoRedirect(t *testing.T) {
 	a, _ := newAdmin(t, func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, target.URL+"/admin/hosted/remove", http.StatusTemporaryRedirect)
 	})
-	r := a.Run(relayID, protocol.RelayUnhost{Seq: 1})
+	r := a.Run(relayID, "relay.test", protocol.RelayUnhost{Seq: 1})
 	if r.Ok || errorOf(r) != "failed" || followed.Load() {
 		t.Fatalf("%+v, followed %v", r, followed.Load())
 	}
@@ -241,7 +241,7 @@ func TestNoProxy(t *testing.T) {
 	t.Setenv("http_proxy", "http://127.0.0.1:1")
 	t.Setenv("NO_PROXY", "")
 	a, b := newAdmin(t, status(200, "{}"))
-	if r := a.Run(relayID, protocol.RelayUnhost{Seq: 1}); !r.Ok || len(b.requests()) != 1 {
+	if r := a.Run(relayID, "relay.test", protocol.RelayUnhost{Seq: 1}); !r.Ok || len(b.requests()) != 1 {
 		t.Fatalf("%+v", r)
 	}
 	if tr, ok := a.client.Transport.(*http.Transport); !ok || tr.Proxy != nil {
@@ -253,7 +253,7 @@ func TestNoProxy(t *testing.T) {
 func TestAnswerCap(t *testing.T) {
 	for _, n := range []int{64 * 1024, 64*1024 + 1} {
 		a, _ := newAdmin(t, status(200, `"`+strings.Repeat("x", n-2)+`"`))
-		r := a.Run(relayID, protocol.RelayUnhost{Seq: 1})
+		r := a.Run(relayID, "relay.test", protocol.RelayUnhost{Seq: 1})
 		if want := n <= 64*1024; r.Ok != want {
 			t.Fatalf("%d bytes: %+v", n, r)
 		}
@@ -274,7 +274,7 @@ func TestTimeoutAndUnreachable(t *testing.T) {
 	}()
 	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { <-release }))
 	servers = append(servers, slow)
-	r := adminFor(t, slow.URL, 200*time.Millisecond).Run(relayID, protocol.RelayHost{Seq: 2, Code: code, TokenSha256: sha})
+	r := adminFor(t, slow.URL, 200*time.Millisecond).Run(relayID, "relay.test", protocol.RelayHost{Seq: 2, Code: code, TokenSha256: sha})
 	if r.Ok || errorOf(r) != "timeout" {
 		t.Fatalf("slow: %+v", r)
 	}
@@ -286,14 +286,14 @@ func TestTimeoutAndUnreachable(t *testing.T) {
 		<-release
 	}))
 	servers = append(servers, drip)
-	if r := adminFor(t, drip.URL, 200*time.Millisecond).Run(relayID, protocol.RelayUnhost{Seq: 2}); r.Ok || errorOf(r) != "timeout" {
+	if r := adminFor(t, drip.URL, 200*time.Millisecond).Run(relayID, "relay.test", protocol.RelayUnhost{Seq: 2}); r.Ok || errorOf(r) != "timeout" {
 		t.Fatalf("drip: %+v", r)
 	}
 
 	gone := httptest.NewServer(http.NotFoundHandler())
 	base := gone.URL
 	gone.Close()
-	if r := adminFor(t, base, time.Minute).Run(relayID, protocol.RelayUnhost{Seq: 2}); r.Ok || errorOf(r) != "failed" {
+	if r := adminFor(t, base, time.Minute).Run(relayID, "relay.test", protocol.RelayUnhost{Seq: 2}); r.Ok || errorOf(r) != "failed" {
 		t.Fatalf("gone: %+v", r)
 	}
 	text := log.String()
@@ -313,9 +313,9 @@ func TestTimeoutAndUnreachable(t *testing.T) {
 func TestLogContent(t *testing.T) {
 	log := captureLog(t)
 	a, _ := newAdmin(t, status(409, `{"code":"AUTH_FAILED"}`))
-	a.Run(relayID, protocol.RelayHost{Seq: 1, Code: code, TokenSha256: sha})
+	a.Run(relayID, "relay.test", protocol.RelayHost{Seq: 1, Code: code, TokenSha256: sha})
 	a2, _ := newAdmin(t, status(409, `{"code":"AUTH_FAILED","code":"x"}`))
-	a2.Run(relayID, protocol.RelayHost{Seq: 1, Code: code, TokenSha256: sha})
+	a2.Run(relayID, "relay.test", protocol.RelayHost{Seq: 1, Code: code, TokenSha256: sha})
 	text := log.String()
 	if !strings.Contains(text, "info: Hosted bridge answered 409 to add of relay "+relayID+"\n") ||
 		!strings.Contains(text, "warn: Hosting request of relay "+relayID+" failed with ArgumentException\n") {
@@ -335,5 +335,18 @@ func TestConfigured(t *testing.T) {
 	a, _ := newAdmin(t, status(200, "{}"))
 	if !a.Configured() {
 		t.Fatal("not configured")
+	}
+}
+
+// plan-relay-rename D1b: an add / rotate answer's MCP URL is on the host the link registered with — the primary gets
+// the configured URL, an alias the same URL on its own name (an extension accepts an MCP URL only on its relay's host).
+func TestMCPURLFollowsTheLinkHost(t *testing.T) {
+	a, _ := newAdmin(t, status(200, `{"browserId":"x"}`))
+	for _, c := range []struct{ host, want string }{{"relay.test", mcpURL}, {"old.test:443", "https://old.test/mcp"}} {
+		for _, req := range []protocol.RelayMessage{protocol.RelayHost{Seq: 1, Code: code, TokenSha256: sha}, protocol.RelayRotate{Seq: 1, TokenSha256: sha}} {
+			if r := a.Run(relayID, c.host, req); !r.Ok || r.McpUrl == nil || *r.McpUrl != c.want {
+				t.Fatalf("%s via %s: %+v, want %s", req.RelayType(), c.host, r, c.want)
+			}
+		}
 	}
 }

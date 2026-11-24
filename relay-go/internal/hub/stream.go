@@ -101,6 +101,10 @@ func (h *Hub) RunStream(w http.ResponseWriter, r *http.Request, client netip.Add
 	owner := q.single("id")
 	switch {
 	case len(q) == 2 && dial != nil && auth.IsRelayID(*dial) && kind != nil:
+		// plan-relay-rename D6: a dial on a renamed relay's old name (the internal listener's Host is loopback)
+		if !internal && h.isAliasHost(r.Host) {
+			h.countAliasUse(quotas.Dial)
+		}
 		h.runDial(sock, *dial, *kind, token, ip)
 	case accept != nil && acceptOK && (len(q) == 1 || (len(q) == 2 && owner != nil && auth.IsRelayID(*owner))):
 		h.runAccept(sock, *accept, owner, ip)

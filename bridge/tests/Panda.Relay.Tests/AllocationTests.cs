@@ -217,7 +217,7 @@ public class AllocationTests
             var dialer = new RelaySocket(a, options, TimeProvider.System);
             var ext = new RelaySocket(b, options, TimeProvider.System);
             var link = new BrowserLink(new string('R', 22), new RelaySocket(WebSocket.CreateFromStream(Stream.Null,
-                new WebSocketCreationOptions { IsServer = true }), options, TimeProvider.System), null, null);
+                new WebSocketCreationOptions { IsServer = true }), options, TimeProvider.System), null, null, options.PublicHost);
             var stream = new RelayStream("S", link, RelayStreamKind.Link, dialer) { Ext = ext, State = StreamState.Open };
             link.Slots[RelayStreamKind.Link] = stream;
             var pumps = Task.WhenAll(hub.PumpAsync(stream, dialer, ext, null, up: true), hub.PumpAsync(stream, ext, dialer, null, up: false));

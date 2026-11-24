@@ -202,6 +202,31 @@ public sealed class HostedControlTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Host_and_rotate_answer_the_mcp_url_on_the_host_the_Chrome_registered_with()
+    {
+        // plan-relay-rename D1b: an extension accepts an MCP URL only on its relay's host (relayLink.ts #acceptsMcpUrl)
+        await using var relay = await RelayFixture.StartAsync(o =>
+        {
+            o.HostedAdminUrl = _admin.Url;
+            o.HostedAdminToken = AdminToken;
+            o.HostedMcpUrl = McpUrl;
+            o.AliasHosts.Add("old.test:443");
+        });
+        await using var viaAlias = new FakeChrome(relay, System.Security.Cryptography.ECDsa.Create(System.Security.Cryptography.ECCurve.NamedCurves.nistP256));
+        var nonce = await viaAlias.OpenAsync();
+        await Wire.SendAsync(viaAlias.Control, viaAlias.Register(nonce, host: "old.test:443"));
+        Assert.IsType<RelayRegistered>(await Wire.ReceiveAsync(viaAlias.Control));
+        await using var viaPrimary = await relay.ChromeAsync();
+
+        await Wire.SendAsync(viaAlias.Control, new RelayHost(1, CodeFor(viaAlias.RelayId), Sha));
+        Assert.Equal(new RelayHostResult(1, true, "https://old.test/mcp"), await Wire.ReceiveAsync(viaAlias.Control));
+        await Wire.SendAsync(viaAlias.Control, new RelayRotate(2, Sha));
+        Assert.Equal(new RelayHostResult(2, true, "https://old.test/mcp"), await Wire.ReceiveAsync(viaAlias.Control));
+        await Wire.SendAsync(viaPrimary.Control, new RelayRotate(3, Sha));
+        Assert.Equal(new RelayHostResult(3, true, McpUrl), await Wire.ReceiveAsync(viaPrimary.Control));
+    }
+
+    [Fact]
     public async Task A_relay_without_a_hosted_bridge_is_unavailable()
     {
         await using var relay = await RelayFixture.StartAsync();

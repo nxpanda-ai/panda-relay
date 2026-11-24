@@ -111,12 +111,16 @@ type fakeHosted struct {
 	panics     bool
 	calls      atomic.Int32
 	release    chan struct{}
+	hosts      chan string // the link host of each call, when set
 }
 
 func (f *fakeHosted) Configured() bool { return f.configured }
 
-func (f *fakeHosted) Run(_ string, m protocol.RelayMessage) protocol.RelayHostResult {
+func (f *fakeHosted) Run(_, linkHost string, m protocol.RelayMessage) protocol.RelayHostResult {
 	f.calls.Add(1)
+	if f.hosts != nil {
+		f.hosts <- linkHost
+	}
 	if f.panics {
 		panic("a bug")
 	}
@@ -297,4 +301,93 @@ func TestO8NotOnlineLoggedOnceAnHour(t *testing.T) {
 	if strings.Contains(text, token) {
 		t.Fatalf("the log holds the dial token:\n%s", text)
 	}
+}
+
+// plan-relay-rename D1 / D1b / D6: a registration signed for an alias is accepted and its link's hosting calls carry
+// the alias; the alias use is logged on the first use of an hour with the previous hour's counts, never a relayId.
+func TestAliasHostRegistersAndIsCounted(t *testing.T) {
+	const alias = "old.test" // as production passes it: the host an extension signs (no :443)
+	log := &logBuffer{}
+	t.Cleanup(logx.Capture(log))
+	f := &fakeHosted{configured: true, release: make(chan struct{}, 2), hosts: make(chan string, 2)}
+	r := newRig(t, f, func(o *options.Options) { o.AliasHosts = []string{alias} })
+	viaAlias := testkit.Register(t, testkit.WSURL(r.base, "/v1/browser"), alias)
+	viaPrimary := r.control(t)
+	for _, c := range []struct {
+		client *testkit.Client
+		want   string
+	}{{viaAlias, alias}, {viaPrimary, publicHost}} {
+		f.release <- struct{}{}
+		c.client.Send(t, protocol.RelayUnhost{Seq: 1})
+		if got := <-f.hosts; got != c.want {
+			t.Fatalf("hosting call carries %q, want %q", got, c.want)
+		}
+		if res := hostResult(t, c.client); !res.Ok {
+			t.Fatalf("%+v", res)
+		}
+	}
+	testkit.Register(t, testkit.WSURL(r.base, "/v1/browser"), alias) // the same hour: no new line
+	r.clock.Advance(time.Hour)
+	testkit.Register(t, testkit.WSURL(r.base, "/v1/browser"), alias)
+
+	text := log.String()
+	if n := strings.Count(text, "alias host in use this hour (first: Registration)"); n != 2 {
+		t.Fatalf("%d alias lines, want 2 (one per hour):\n%s", n, text)
+	}
+	if !strings.Contains(text, "; last hour with use none: 0 registrations, 0 dials") ||
+		!strings.Contains(text, "; last hour with use 2026-11-20T10Z: 2 registrations, 0 dials") {
+		t.Fatalf("log:\n%s", text)
+	}
+	for _, line := range strings.Split(text, "\n") {
+		if strings.Contains(line, "alias host") && strings.Contains(line, viaAlias.RelayID) {
+			t.Fatalf("an alias line names the browser: %s", line)
+		}
+	}
+}
+
+// plan-relay-rename D6 (diff critic F1): a dial whose Host is an alias (any case) is counted, a dial on another Host is
+// not; a later hour reports the last used hour's dials, across a gap. A refused dial (4504) counts too: the relay cannot
+// tell a real dial token (the Chrome checks it), so the count is an upper bound.
+func TestAliasDialsAreCounted(t *testing.T) {
+	log := &logBuffer{}
+	t.Cleanup(logx.Capture(log))
+	r := newRig(t, nil, func(o *options.Options) { o.AliasHosts = []string{"old.test"} })
+	dial := func(host string) {
+		t.Helper()
+		ws, _, err := websocket.DefaultDialer.Dial(testkit.WSURL(r.base, "/v1/stream?dial=ZZZdEfGhIjKlMnOpQrSt_-&kind=link"),
+			http.Header{"X-Panda-Dial": {"c2VjcmV0LWRpYWwtdG9rZW4tdmFsdWU"}, "Host": {host}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer ws.Close()
+		_ = ws.SetReadDeadline(time.Now().Add(5 * time.Second))
+		_, _, err = ws.ReadMessage()
+		if code := testkit.CloseCode(err); code != protocol.CloseNotOnline {
+			t.Fatalf("closed %d, want 4504", code)
+		}
+	}
+	aliasLines := func() []string {
+		var lines []string
+		for _, l := range strings.Split(log.String(), "\n") {
+			if strings.Contains(l, "alias host") {
+				lines = append(lines, l)
+			}
+		}
+		return lines
+	}
+	dial(publicHost)
+	if n := len(aliasLines()); n != 0 {
+		t.Fatalf("a primary-Host dial was counted: %v", aliasLines())
+	}
+	dial("OLD.test")
+	dial("old.test")
+	if l := aliasLines(); len(l) != 1 || !strings.Contains(l[0], "(first: Dial)") {
+		t.Fatalf("%v", l)
+	}
+	r.clock.Advance(3 * time.Hour)
+	dial("old.test")
+	if l := aliasLines(); len(l) != 2 || !strings.HasSuffix(l[1], "; last hour with use 2026-11-20T10Z: 0 registrations, 2 dials") {
+		t.Fatalf("%v", l)
+	}
+	r.settled(t)
 }
